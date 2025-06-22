@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
+import 'home_screen.dart';
 
 class LoadingScreen extends StatefulWidget {
   const LoadingScreen({super.key});
@@ -33,6 +35,12 @@ class _LoadingScreenState extends State<LoadingScreen> with SingleTickerProvider
       begin: Colors.blue[700],
       end: Colors.blue[300],
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+    
+    Timer(const Duration(seconds: 3), () {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
+    });
   }
 
   @override
