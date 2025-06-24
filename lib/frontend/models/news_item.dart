@@ -8,6 +8,7 @@ class NewsItem {
   final int comments;
   final String articleUrl;
 
+
   NewsItem({
     required this.source,
     required this.timeAgo,
