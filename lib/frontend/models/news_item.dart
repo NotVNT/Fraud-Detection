@@ -6,6 +6,8 @@ class NewsItem {
   final List<String> tags;
   final int likes;
   final int comments;
+  final String articleUrl;
+
 
   NewsItem({
     required this.source,
@@ -15,5 +17,6 @@ class NewsItem {
     required this.tags,
     required this.likes,
     required this.comments,
+    required this.articleUrl,
   });
 } 
