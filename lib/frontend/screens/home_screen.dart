@@ -141,30 +141,26 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      child: Center(
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const SizedBox(width: 5),
-              Icon(
-                Icons.security,
-                size: 40,
-                color: Colors.blue.shade700,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 15),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.security,
+              size: 40,
+              color: Colors.blue.shade700,
+            ),
+            const SizedBox(width: 10),
+            const Text(
+              'PHÒNG CHỐNG LỪA ĐẢO',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.blue,
               ),
-              const SizedBox(width: 10),
-              const Text(
-                'PHÒNG CHỐNG LỪA ĐẢO',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue,
-                ),
-              ),
-              const SizedBox(width: 5),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -329,26 +325,28 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
             const SizedBox(width: 10),
-            const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Thông tin liên hệ',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+            const Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Thông tin liên hệ',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'Nhấn để mở Zalo',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.white70,
+                  SizedBox(height: 4),
+                  Text(
+                    'Nhấn để mở Zalo',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.white70,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
