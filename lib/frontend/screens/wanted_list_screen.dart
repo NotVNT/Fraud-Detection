@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../backend/services/wanted_service.dart';
+import '../models/wanted_person.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class WantedListScreen extends StatefulWidget {
   const WantedListScreen({super.key});
@@ -9,13 +12,62 @@ class WantedListScreen extends StatefulWidget {
 
 class _WantedListScreenState extends State<WantedListScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final WantedService _wantedService = WantedService();
   String _filterType = 'all';
+  List<WantedPerson> _wantedList = [];
   List<WantedPerson> _filteredList = [];
+  bool _isLoading = true;
+  String _errorMessage = '';
+  int _currentPage = 1;
+  bool _isLoadingMore = false;
   
   @override
   void initState() {
     super.initState();
-    _filteredList = _wantedList;
+    _loadWantedPersons();
+  }
+  
+  Future<void> _loadWantedPersons({bool refresh = false}) async {
+    try {
+      setState(() {
+        if (refresh) {
+          _currentPage = 1;
+          _wantedList = [];
+          _filteredList = [];
+        }
+        _isLoading = _currentPage == 1;
+        _isLoadingMore = _currentPage > 1;
+        _errorMessage = '';
+      });
+      
+      final wantedPersons = await _wantedService.fetchWantedPersons(page: _currentPage);
+      
+      setState(() {
+        if (refresh || _currentPage == 1) {
+          _wantedList = wantedPersons;
+        } else {
+          _wantedList.addAll(wantedPersons);
+        }
+        _applyFilters();
+        _isLoading = false;
+        _isLoadingMore = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Không thể tải dữ liệu: $e';
+        _isLoading = false;
+        _isLoadingMore = false;
+      });
+    }
+  }
+  
+  void _loadMoreData() {
+    _currentPage++;
+    _loadWantedPersons();
+  }
+  
+  void _refreshData() {
+    _loadWantedPersons(refresh: true);
   }
   
   @override
@@ -26,32 +78,71 @@ class _WantedListScreenState extends State<WantedListScreen> {
 
   void _filterList(String query) {
     setState(() {
-      if (query.isEmpty) {
-        _filteredList = _wantedList.where((person) {
-          if (_filterType == 'all') return true;
-          return person.category == _filterType;
-        }).toList();
-      } else {
-        _filteredList = _wantedList.where((person) {
-          final nameMatch = person.name.toLowerCase().contains(query.toLowerCase());
-          final locationMatch = person.lastLocation.toLowerCase().contains(query.toLowerCase());
-          final categoryMatch = _filterType == 'all' || person.category == _filterType;
-          
-          return (nameMatch || locationMatch) && categoryMatch;
-        }).toList();
-      }
+      _applyFilters(query: query);
     });
+  }
+  
+  void _applyFilters({String? query}) {
+    final searchQuery = query ?? _searchController.text;
+    
+    if (searchQuery.isEmpty && _filterType == 'all') {
+      _filteredList = List.from(_wantedList);
+      return;
+    }
+    
+    _filteredList = _wantedList.where((person) {
+      bool matchesSearch = true;
+      if (searchQuery.isNotEmpty) {
+        matchesSearch = person.name.toLowerCase().contains(searchQuery.toLowerCase()) ||
+                        person.address.toLowerCase().contains(searchQuery.toLowerCase()) ||
+                        person.crime.toLowerCase().contains(searchQuery.toLowerCase());
+      }
+      
+      bool matchesFilter = true;
+      if (_filterType != 'all') {
+        // Filter by crime type
+        switch (_filterType) {
+          case 'financial':
+            matchesFilter = person.crime.toLowerCase().contains('tài sản') || 
+                           person.crime.toLowerCase().contains('tiền') ||
+                           person.crime.toLowerCase().contains('lừa đảo');
+            break;
+          case 'cyber':
+            matchesFilter = person.crime.toLowerCase().contains('mạng') || 
+                           person.crime.toLowerCase().contains('công nghệ') ||
+                           person.crime.toLowerCase().contains('máy tính');
+            break;
+          case 'identity':
+            matchesFilter = person.crime.toLowerCase().contains('giả danh') || 
+                           person.crime.toLowerCase().contains('giả mạo');
+            break;
+          case 'violent':
+            matchesFilter = person.crime.toLowerCase().contains('giết người') || 
+                           person.crime.toLowerCase().contains('thương tích') ||
+                           person.crime.toLowerCase().contains('cố ý gây thương');
+            break;
+          default:
+            matchesFilter = true;
+        }
+      }
+      
+      return matchesSearch && matchesFilter;
+    }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Danh Sách Quy Nã'),
+        title: const Text('Danh Sách Truy Nã'),
         backgroundColor: Colors.purple.shade700,
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _refreshData,
+          ),
           IconButton(
             icon: const Icon(Icons.info_outline),
             onPressed: () {
@@ -77,9 +168,13 @@ class _WantedListScreenState extends State<WantedListScreen> {
             _buildSearchBar(),
             _buildCategoryFilter(),
             Expanded(
-              child: _filteredList.isEmpty
-                  ? _buildEmptyState()
-                  : _buildWantedList(),
+              child: _isLoading
+                  ? _buildLoadingState()
+                  : _errorMessage.isNotEmpty
+                      ? _buildErrorState()
+                      : _filteredList.isEmpty
+                          ? _buildEmptyState()
+                          : _buildWantedList(),
             ),
           ],
         ),
@@ -87,10 +182,81 @@ class _WantedListScreenState extends State<WantedListScreen> {
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.purple.shade700,
         onPressed: () {
-          _showReportDialog();
+          _launchUrl('https://truyna.bocongan.gov.vn/');
         },
-        child: const Icon(Icons.add_alert, color: Colors.white),
-        tooltip: 'Báo cáo đối tượng',
+        child: const Icon(Icons.public, color: Colors.white),
+        tooltip: 'Truy cập trang web chính thức',
+      ),
+    );
+  }
+
+  Future<void> _launchUrl(String url) async {
+    if (!await launchUrl(Uri.parse(url))) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không thể mở liên kết')),
+      );
+    }
+  }
+
+  Widget _buildLoadingState() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(
+            color: Colors.white,
+          ),
+          SizedBox(height: 16),
+          Text(
+            'Đang tải dữ liệu...',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.error_outline,
+            size: 80,
+            color: Colors.white.withOpacity(0.6),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Đã xảy ra lỗi',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.white.withOpacity(0.8),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _errorMessage,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.6),
+            ),
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: _refreshData,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Thử lại'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: Colors.purple.shade700,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -118,7 +284,7 @@ class _WantedListScreenState extends State<WantedListScreen> {
             child: TextField(
               controller: _searchController,
               decoration: const InputDecoration(
-                hintText: 'Tìm kiếm theo tên, địa điểm...',
+                hintText: 'Tìm kiếm theo tên, địa điểm, tội danh...',
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.symmetric(vertical: 16),
               ),
@@ -147,13 +313,13 @@ class _WantedListScreenState extends State<WantedListScreen> {
         children: [
           _buildFilterChip('all', 'Tất cả'),
           const SizedBox(width: 8),
-          _buildFilterChip('financial', 'Lừa đảo tài chính'),
+          _buildFilterChip('financial', 'Tội về tài sản'),
           const SizedBox(width: 8),
-          _buildFilterChip('cyber', 'Tội phạm mạng'),
+          _buildFilterChip('violent', 'Tội bạo lực'),
+          const SizedBox(width: 8),
+          _buildFilterChip('cyber', 'Tội công nghệ'),
           const SizedBox(width: 8),
           _buildFilterChip('identity', 'Giả danh'),
-          const SizedBox(width: 8),
-          _buildFilterChip('other', 'Khác'),
         ],
       ),
     );
@@ -166,7 +332,7 @@ class _WantedListScreenState extends State<WantedListScreen> {
       onTap: () {
         setState(() {
           _filterType = type;
-          _filterList(_searchController.text);
+          _applyFilters();
         });
       },
       child: Container(
@@ -221,13 +387,32 @@ class _WantedListScreenState extends State<WantedListScreen> {
   }
 
   Widget _buildWantedList() {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _filteredList.length,
-      itemBuilder: (context, index) {
-        final person = _filteredList[index];
-        return _buildWantedCard(person);
+    return NotificationListener<ScrollNotification>(
+      onNotification: (ScrollNotification scrollInfo) {
+        if (!_isLoadingMore && 
+            scrollInfo.metrics.pixels == scrollInfo.metrics.maxScrollExtent) {
+          _loadMoreData();
+          return true;
+        }
+        return false;
       },
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: _filteredList.length + (_isLoadingMore ? 1 : 0),
+        itemBuilder: (context, index) {
+          if (index == _filteredList.length) {
+            return const Center(
+              child: Padding(
+                padding: EdgeInsets.all(16.0),
+                child: CircularProgressIndicator(color: Colors.white),
+              ),
+            );
+          }
+          
+          final person = _filteredList[index];
+          return _buildWantedCard(person);
+        },
+      ),
     );
   }
 
@@ -256,7 +441,7 @@ class _WantedListScreenState extends State<WantedListScreen> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  _getCategoryName(person.category),
+                  _getCrimeCategory(person.crime),
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -264,7 +449,7 @@ class _WantedListScreenState extends State<WantedListScreen> {
                 ),
                 const Spacer(),
                 Text(
-                  'Đã báo cáo: ${person.reportCount}',
+                  person.decisionNumber,
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 14,
@@ -275,60 +460,39 @@ class _WantedListScreenState extends State<WantedListScreen> {
           ),
           Padding(
             padding: const EdgeInsets.all(16),
-            child: Row(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 100,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.person,
-                    size: 60,
-                    color: Colors.grey,
+                Text(
+                  person.name,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        person.name,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      _buildInfoRow(Icons.calendar_today, 'Tuổi: ${person.age}'),
-                      const SizedBox(height: 4),
-                      _buildInfoRow(Icons.location_on, person.lastLocation),
-                      const SizedBox(height: 4),
-                      _buildInfoRow(Icons.phone, person.contactPhone),
-                      const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.red.shade100,
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                        child: const Text(
-                          'Cần cảnh giác',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.red,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
+                const SizedBox(height: 12),
+                _buildInfoRow(Icons.calendar_today, 'Năm sinh: ${person.birthYear}'),
+                const SizedBox(height: 4),
+                _buildInfoRow(Icons.location_on, person.address),
+                const SizedBox(height: 4),
+                _buildInfoRow(Icons.people, person.parentNames),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade100,
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  child: const Text(
+                    'Đang truy nã',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.red,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],
@@ -341,14 +505,22 @@ class _WantedListScreenState extends State<WantedListScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Mô tả hành vi:',
+                  'Tội danh:',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 15,
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(person.description),
+                Text(person.crime),
+                const SizedBox(height: 8),
+                Text(
+                  'Đơn vị ra quyết định: ${person.issuingUnit}',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
                 const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -357,16 +529,25 @@ class _WantedListScreenState extends State<WantedListScreen> {
                       Icons.share,
                       'Chia sẻ',
                       Colors.blue,
+                      onPressed: () {},
                     ),
                     _buildActionButton(
-                      Icons.report,
-                      'Báo cáo thêm',
+                      Icons.open_in_browser,
+                      'Chi tiết',
                       Colors.orange,
+                      onPressed: () {
+                        if (person.detailUrl.isNotEmpty) {
+                          _launchUrl(person.detailUrl);
+                        }
+                      },
                     ),
                     _buildActionButton(
                       Icons.phone,
-                      'Gọi',
+                      'Báo tin',
                       Colors.green,
+                      onPressed: () {
+                        _launchUrl('tel:069 2345 860');
+                      },
                     ),
                   ],
                 ),
@@ -399,9 +580,9 @@ class _WantedListScreenState extends State<WantedListScreen> {
     );
   }
 
-  Widget _buildActionButton(IconData icon, String label, Color color) {
+  Widget _buildActionButton(IconData icon, String label, Color color, {required Function() onPressed}) {
     return TextButton.icon(
-      onPressed: () {},
+      onPressed: onPressed,
       icon: Icon(icon, color: color, size: 20),
       label: Text(
         label,
@@ -410,19 +591,27 @@ class _WantedListScreenState extends State<WantedListScreen> {
     );
   }
 
-  String _getCategoryName(String category) {
-    switch (category) {
-      case 'financial':
-        return 'Lừa đảo tài chính';
-      case 'cyber':
-        return 'Tội phạm mạng';
-      case 'identity':
-        return 'Giả danh';
-      case 'other':
-        return 'Khác';
-      default:
-        return 'Không xác định';
+  String _getCrimeCategory(String crime) {
+    final crimeLower = crime.toLowerCase();
+    
+    if (crimeLower.contains('giết người')) {
+      return 'Tội giết người';
+    } else if (crimeLower.contains('trộm cắp') || crimeLower.contains('cướp')) {
+      return 'Tội về tài sản';
+    } else if (crimeLower.contains('gây thương tích') || crimeLower.contains('cố ý gây')) {
+      return 'Tội gây thương tích';
+    } else if (crimeLower.contains('ma túy')) {
+      return 'Tội về ma túy';
+    } else if (crimeLower.contains('giao thông')) {
+      return 'Vi phạm giao thông';
+    } else if (crimeLower.contains('lừa đảo')) {
+      return 'Lừa đảo';
+    } else if (crimeLower.contains('gây rối')) {
+      return 'Gây rối trật tự';
     }
+    
+    // Default category
+    return 'Đối tượng truy nã';
   }
 
   void _showInfoDialog() {
@@ -435,7 +624,7 @@ class _WantedListScreenState extends State<WantedListScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Đây là danh sách các đối tượng lừa đảo đã được xác nhận và cảnh báo.',
+              'Đây là danh sách các đối tượng truy nã từ Cổng thông tin điện tử của Bộ Công An.',
               style: TextStyle(fontSize: 14),
             ),
             SizedBox(height: 8),
@@ -448,7 +637,7 @@ class _WantedListScreenState extends State<WantedListScreen> {
             ),
             SizedBox(height: 4),
             Text(
-              '• Thông tin được cập nhật từ cộng đồng và cơ quan chức năng',
+              '• Thông tin được cập nhật từ trang web chính thức của Bộ Công An',
               style: TextStyle(fontSize: 14),
             ),
             SizedBox(height: 4),
@@ -461,6 +650,14 @@ class _WantedListScreenState extends State<WantedListScreen> {
               '• Không tự ý tiếp cận hoặc đe dọa đối tượng',
               style: TextStyle(fontSize: 14),
             ),
+            SizedBox(height: 8),
+            Text(
+              'Nguồn: truyna.bocongan.gov.vn',
+              style: TextStyle(
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
           ],
         ),
         actions: [
@@ -472,154 +669,4 @@ class _WantedListScreenState extends State<WantedListScreen> {
       ),
     );
   }
-
-  void _showReportDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Báo Cáo Đối Tượng'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const TextField(
-                decoration: InputDecoration(
-                  labelText: 'Tên đối tượng',
-                  hintText: 'Nhập tên đối tượng cần báo cáo',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 16),
-              const TextField(
-                decoration: InputDecoration(
-                  labelText: 'Số điện thoại/Tài khoản',
-                  hintText: 'Nhập số điện thoại hoặc tài khoản của đối tượng',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 16),
-              const TextField(
-                maxLines: 3,
-                decoration: InputDecoration(
-                  labelText: 'Mô tả hành vi',
-                  hintText: 'Mô tả chi tiết hành vi lừa đảo',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                decoration: const InputDecoration(
-                  labelText: 'Loại lừa đảo',
-                  border: OutlineInputBorder(),
-                ),
-                items: const [
-                  DropdownMenuItem(
-                    value: 'financial',
-                    child: Text('Lừa đảo tài chính'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'cyber',
-                    child: Text('Tội phạm mạng'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'identity',
-                    child: Text('Giả danh'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'other',
-                    child: Text('Khác'),
-                  ),
-                ],
-                onChanged: (value) {},
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Hủy'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.purple.shade700,
-            ),
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'Gửi Báo Cáo',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class WantedPerson {
-  final String name;
-  final int age;
-  final String lastLocation;
-  final String contactPhone;
-  final String description;
-  final String category;
-  final int reportCount;
-
-  WantedPerson({
-    required this.name,
-    required this.age,
-    required this.lastLocation,
-    required this.contactPhone,
-    required this.description,
-    required this.category,
-    required this.reportCount,
-  });
-}
-
-final List<WantedPerson> _wantedList = [
-  WantedPerson(
-    name: 'Nguyễn Văn A',
-    age: 35,
-    lastLocation: 'TP. Hồ Chí Minh',
-    contactPhone: '0912345678',
-    description: 'Đối tượng thường tự giới thiệu là nhân viên ngân hàng, liên hệ khách hàng và yêu cầu cung cấp thông tin thẻ tín dụng để xác minh.',
-    category: 'financial',
-    reportCount: 23,
-  ),
-  WantedPerson(
-    name: 'Trần Thị B',
-    age: 28,
-    lastLocation: 'Hà Nội',
-    contactPhone: '0987654321',
-    description: 'Đối tượng giả danh cán bộ thuế, liên hệ với các doanh nghiệp và yêu cầu chuyển tiền để giải quyết các vấn đề về thuế.',
-    category: 'identity',
-    reportCount: 17,
-  ),
-  WantedPerson(
-    name: 'Lê Văn C',
-    age: 40,
-    lastLocation: 'Đà Nẵng',
-    contactPhone: '0909123456',
-    description: 'Đối tượng tạo các website giả mạo các sàn thương mại điện tử lớn để thu thập thông tin thẻ tín dụng và đánh cắp tiền.',
-    category: 'cyber',
-    reportCount: 31,
-  ),
-  WantedPerson(
-    name: 'Phạm Thị D',
-    age: 32,
-    lastLocation: 'Cần Thơ',
-    contactPhone: '0978123456',
-    description: 'Đối tượng lừa đảo bằng hình thức huy động vốn đầu tư với lãi suất cao, sau đó chiếm đoạt tiền và bỏ trốn.',
-    category: 'financial',
-    reportCount: 42,
-  ),
-  WantedPerson(
-    name: 'Hoàng Văn E',
-    age: 45,
-    lastLocation: 'Hải Phòng',
-    contactPhone: '0912987654',
-    description: 'Đối tượng giả danh công an, gọi điện thông báo người dân liên quan đến vụ án ma túy và yêu cầu chuyển tiền để được miễn truy cứu.',
-    category: 'identity',
-    reportCount: 28,
-  ),
-]; 
+} 
