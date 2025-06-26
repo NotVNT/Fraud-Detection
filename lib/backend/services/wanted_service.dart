@@ -118,7 +118,11 @@ class WantedService {
         }
         
         // If we found a table, extract rows and process as before
-        List<Element> rows = table!.querySelectorAll('tr');
+        if (table == null) {
+          throw Exception('Không tìm thấy bảng dữ liệu đối tượng truy nã');
+        }
+        
+        List<Element> rows = table.querySelectorAll('tr');
         if (rows.isEmpty || rows.length < 2) {
           throw Exception('Không tìm thấy dữ liệu trong bảng');
         }

@@ -90,7 +90,7 @@ class NewsService {
               imageUrl = 'no_image';
               // Only print if we have a valid title
               if (title != 'No title' && title.isNotEmpty) {
-                print('No image for: ${title.substring(0, title.length > 30 ? 30 : title.length)}...');
+                print('No image for: ${title.length > 30 ? title.substring(0, 30) : title}...');
               }
             }
             
@@ -176,7 +176,7 @@ class NewsService {
               }
               
               // Debug info
-              print('Article: ${title.substring(0, title.length > 40 ? 40 : title.length)}... | Date: ${publishDate.toString()} | Raw: $timeAgo');
+              print('Article: ${title.length > 40 ? title.substring(0, 40) : title}... | Date: ${publishDate.toString()} | Raw: $timeAgo');
             } catch (e) {
               print('Error parsing date from: $timeAgo - $e');
             }

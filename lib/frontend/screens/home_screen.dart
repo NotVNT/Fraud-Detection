@@ -218,7 +218,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           ),
           const SizedBox(width: 15),
           Flexible(
-            child: const Text(
+            child: Text(
               'PHÒNG CHỐNG LỪA ĐẢO',
               style: TextStyle(
                 fontSize: 18,
