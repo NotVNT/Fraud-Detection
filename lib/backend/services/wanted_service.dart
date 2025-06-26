@@ -10,23 +10,117 @@ class WantedService {
   // Method to fetch wanted persons from the website
   Future<List<WantedPerson>> fetchWantedPersons({int page = 1}) async {
     try {
+      // Update the URL to ensure we're accessing the correct page
+      // Try the main page first, then fallback to other possible paths
+      final String url = '$baseUrl${page > 1 ? "/danh-sach?page=$page" : ""}';
+      
+      print('Attempting to fetch data from: $url');
+      
       // Send HTTP request to the website
-      final response = await http.get(Uri.parse('$baseUrl/Trang-chủ'));
+      final response = await http.get(Uri.parse(url));
       
       if (response.statusCode == 200) {
         // Parse the HTML content
         Document document = parser.parse(response.body);
         
-        // Extract the table containing wanted persons
-        final table = document.querySelector('table.dnnGrid');
+        // Debug: Print part of the HTML content to see what we're getting
+        print('HTML content preview: ${response.body.length > 500 ? response.body.substring(0, 500) : response.body}...');
+        
+        // Debug: Check for any tables in the document
+        final allTables = document.querySelectorAll('table');
+        print('Found ${allTables.length} tables on the page');
+        
+        // Try multiple selector variations to find the wanted persons table
+        Element? table = document.querySelector('table.dnnGrid');
+        
         if (table == null) {
-          throw Exception('Could not find the wanted persons table');
+          // Try alternative selectors
+          final possibleSelectors = [
+            'table.wanted-list',
+            'table.data-table',
+            'table.list-data',
+            'table.wanted-persons',
+            'table.persons-list',
+            'table' // Last resort: try any table
+          ];
+          
+          for (var selector in possibleSelectors) {
+            table = document.querySelector(selector);
+            if (table != null) {
+              print('Found table using selector: $selector');
+              break;
+            }
+          }
+          
+          // If still no table found, try looking for div containers that might have the data
+          if (table == null) {
+            final personCards = document.querySelectorAll('div.person-card, div.wanted-card, div.person-item');
+            if (personCards.isNotEmpty) {
+              print('Found ${personCards.length} person cards instead of table');
+              
+              // Process person cards and convert to WantedPerson objects
+              List<WantedPerson> wantedPersons = [];
+              
+              for (var card in personCards) {
+                try {
+                  // Extract data from card elements
+                  final nameElement = card.querySelector('.name, .person-name, h3, h4');
+                  final name = nameElement?.text.trim() ?? 'Không rõ';
+                  
+                  final detailUrl = nameElement?.parent?.attributes['href'] ?? '';
+                  final id = _extractIdFromUrl(detailUrl);
+                  
+                  final birthYearElement = card.querySelector('.birth-year, .year, .dob');
+                  final birthYear = birthYearElement?.text.trim() ?? '';
+                  
+                  final addressElement = card.querySelector('.address, .location');
+                  final address = addressElement?.text.trim() ?? '';
+                  
+                  final parentNamesElement = card.querySelector('.parents, .parent-names');
+                  final parentNames = parentNamesElement?.text.trim() ?? '';
+                  
+                  final crimeElement = card.querySelector('.crime, .offense');
+                  final crime = crimeElement?.text.trim() ?? '';
+                  
+                  final decisionNumberElement = card.querySelector('.decision, .decision-number');
+                  final decisionNumber = decisionNumberElement?.text.trim() ?? '';
+                  
+                  final issuingUnitElement = card.querySelector('.unit, .issuing-unit');
+                  final issuingUnit = issuingUnitElement?.text.trim() ?? '';
+                  
+                  // Add to the list
+                  wantedPersons.add(WantedPerson.fromHtml({
+                    'id': id,
+                    'name': name,
+                    'birthYear': birthYear,
+                    'address': address,
+                    'parentNames': parentNames,
+                    'crime': crime,
+                    'decisionNumber': decisionNumber,
+                    'issuingUnit': issuingUnit,
+                    'detailUrl': detailUrl.isNotEmpty ? (detailUrl.startsWith('http') ? detailUrl : '$baseUrl$detailUrl') : '',
+                  }));
+                } catch (e) {
+                  print('Error parsing card: $e');
+                  continue;
+                }
+              }
+              
+              // If we found and parsed person cards, return them
+              if (wantedPersons.isNotEmpty) {
+                return wantedPersons;
+              }
+            }
+            
+            // If we still couldn't find the data, throw an exception
+            throw Exception('Không tìm thấy dữ liệu đối tượng truy nã trên trang web');
+          }
         }
         
-        // Extract rows from the table (skip header row)
-        List<Element> rows = table.querySelectorAll('tr');
+        // If we found a table, extract rows and process as before
+        List<Element> rows = table!.querySelectorAll('tr');
         if (rows.isEmpty || rows.length < 2) {
-          throw Exception('No data found in the table');
+          throw Exception('Không tìm thấy dữ liệu trong bảng');
         }
         
         // Skip the header row
@@ -76,19 +170,21 @@ class WantedService {
           }
         }
         
-        // If we couldn't parse any data or the list is too small, return fallback data
-        if (wantedPersons.isEmpty || wantedPersons.length < 5) {
-          return _getFallbackData();
+        // If we couldn't parse any data, throw an exception
+        if (wantedPersons.isEmpty) {
+          throw Exception('Không tìm thấy dữ liệu đối tượng truy nã');
         }
         
         return wantedPersons;
       } else {
-        throw Exception('Failed to load data: ${response.statusCode}');
+        print('Failed to load data: ${response.statusCode}');
+        throw Exception('Không thể tải dữ liệu: Mã lỗi ${response.statusCode}');
       }
     } catch (e) {
       print('Error fetching wanted persons: $e');
-      // Return fallback data in case of error
-      return _getFallbackData();
+      // Instead of returning fallback data, rethrow the exception
+      // so the UI can handle it appropriately
+      rethrow;
     }
   }
   
@@ -123,111 +219,5 @@ class WantedService {
     }
     
     return {'imageUrl': ''};
-  }
-  
-  // Fallback data in case the website is not available
-  List<WantedPerson> _getFallbackData() {
-    return [
-      WantedPerson(
-        id: '1',
-        name: 'Võ Thế Hùng',
-        birthYear: '1982',
-        address: 'Vĩnh Giang, Vĩnh Linh, Quảng Trị',
-        parentNames: 'Võ Quang Huy, Trần Thị Nhường',
-        crime: 'Tội giết người',
-        decisionNumber: 'Số 2508 ngày 22/05/2025',
-        issuingUnit: 'Cơ quan CSĐT TP về TTXHCA tỉnh Quảng Trị',
-      ),
-      WantedPerson(
-        id: '2',
-        name: 'Lê Thị Giang',
-        birthYear: '1983',
-        address: 'thôn Duyên Ứng, xã Lam Điền, Chương Mỹ, Hà Nội',
-        parentNames: 'Lê Quang Kéo, Cấn Thị Vân',
-        crime: 'Tội trộm cắp tài sản',
-        decisionNumber: 'Số A7732 ngày 21/05/2025',
-        issuingUnit: 'Văn phòng cơ quan CSĐTCA TP. Hà Nội',
-      ),
-      WantedPerson(
-        id: '3',
-        name: 'Lê Văn Quân',
-        birthYear: '1996',
-        address: 'thôn 1, xã Hạ Mỹ, Bố Trạch, Quảng Bình',
-        parentNames: 'Lê Văn Tính, Nguyễn Thị Thanh Hoa',
-        crime: 'Tội giết người',
-        decisionNumber: 'Số A2540 ngày 21/05/2025',
-        issuingUnit: 'Văn phòng Cơ quan CSĐTCA tỉnh Bình Dương',
-      ),
-      WantedPerson(
-        id: '4',
-        name: 'Hà Văn Tuyên',
-        birthYear: '1997',
-        address: 'thôn An Khang, Tân An, Chiêm Hoá, Tuyên Quang',
-        parentNames: 'Hà Văn Khoát, Hà Thị Phương',
-        crime: 'Tội gây rối trật tự công cộng',
-        decisionNumber: 'Số 7124 ngày 21/05/2025',
-        issuingUnit: 'Cơ quan CSĐT TP về TTXHCA TP. Hải Phòng',
-      ),
-      WantedPerson(
-        id: '5',
-        name: 'Trần Hoàng Tân',
-        birthYear: '1997',
-        address: 'ấp An Quới, xã An Thạnh 3, Cù Lao Dung, Sóc Trăng',
-        parentNames: 'Trần Văn Phước, Huỳnh Thị Danh',
-        crime: 'Tội hủy hoại hoặc cố ý làm hư hỏng tài sản + Tội gây rối trật tự công cộng',
-        decisionNumber: 'Số 2920 ngày 21/05/2025',
-        issuingUnit: 'Cơ quan CSĐT TP về TTXHCA tỉnh Bình Dương',
-      ),
-      WantedPerson(
-        id: '6',
-        name: 'Trần Anh Thư',
-        birthYear: '2008',
-        address: 'tổ 7, phường Hùng Vương, thành phố Phúc Yên, tỉnh Vĩnh Phúc',
-        parentNames: 'Trần Đức Hiền, Lưu Thị Hạnh',
-        crime: 'Tội cố ý gây thương tích hoặc gây tổn hại cho sức khỏe của người khác',
-        decisionNumber: 'Số A1651 ngày 20/05/2025',
-        issuingUnit: 'Cơ quan CSĐT TP về TTXHCA tỉnh Vĩnh Phúc',
-      ),
-      WantedPerson(
-        id: '7',
-        name: 'Nguyễn Việt Thịnh',
-        birthYear: '1994',
-        address: 'ấp Phước Phong, xã Phú Tân, huyện Châu Thành, tỉnh Sóc Trăng',
-        parentNames: 'Nguyễn Hữu Thọ, Thạch Thị Dinh',
-        crime: 'Tội giao cấu hoặc thực hiện hành vi quan hệ tình dục khác với người từ đủ 13 tuổi đến dưới 16 tuổi',
-        decisionNumber: 'Số 4318 ngày 20/05/2025',
-        issuingUnit: 'Cơ quan CSĐTCA tỉnh Sóc Trăng',
-      ),
-      WantedPerson(
-        id: '8',
-        name: 'Vũ Thế Tới',
-        birthYear: '1993',
-        address: 'Không rõ',
-        parentNames: 'Vũ Văn Tịnh, Vũ Thị Tơ',
-        crime: 'Tội cho vay lãi nặng trong giao dịch dân sự',
-        decisionNumber: 'Số C1146 ngày 19/05/2025',
-        issuingUnit: 'Cơ quan CSĐT TP về TTXHCA TP. Hồ Chí Minh',
-      ),
-      WantedPerson(
-        id: '9',
-        name: 'Lại Văn Cường',
-        birthYear: '1989',
-        address: 'Không rõ',
-        parentNames: 'Lại Văn Ghi, Phạm Thị Sách',
-        crime: 'Tội cho vay lãi nặng trong giao dịch dân sự',
-        decisionNumber: 'Số C1145 ngày 19/05/2025',
-        issuingUnit: 'Cơ quan CSĐT TP về TTXHCA TP. Hồ Chí Minh',
-      ),
-      WantedPerson(
-        id: '10',
-        name: 'Nguyễn Văn Tứ',
-        birthYear: '1999',
-        address: 'ấp Xóm Rẫy, xã Quách Phẩm Bắc, Đầm Rơi, Cà Mau',
-        parentNames: 'Nguyễn Văn Chanh, Mai Thị Sáu',
-        crime: 'Tội cố ý gây thương tích hoặc gây tổn hại cho sức khỏe của người khác',
-        decisionNumber: 'Số 07 ngày 08/05/2025',
-        issuingUnit: 'Cơ quan Thi hành án Hình sự và Hỗ trợ Tư phápCA tỉnh Bình Dương',
-      ),
-    ];
   }
 } 
