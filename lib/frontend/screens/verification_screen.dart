@@ -44,16 +44,18 @@ class _VerificationScreenState extends State<VerificationScreen> {
             ],
           ),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              _buildInfoCard(),
-              const SizedBox(height: 24),
-              Expanded(
-                child: _buildVerificationForm(),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  _buildInfoCard(),
+                  const SizedBox(height: 24),
+                  _buildVerificationForm(),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -128,78 +130,80 @@ class _VerificationScreenState extends State<VerificationScreen> {
       ),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              'Thông Tin Cần Xác Minh',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 24),
-            // Phone number verification
-            _buildVerificationOption(
-              'Số điện thoại',
-              'Kiểm tra số điện thoại có phải lừa đảo không',
-              Icons.phone,
-              _phoneController,
-              'Nhập số điện thoại cần kiểm tra',
-              TextInputType.phone,
-            ),
-            const SizedBox(height: 16),
-            // Bank account verification
-            _buildVerificationOption(
-              'Tài khoản ngân hàng',
-              'Kiểm tra tài khoản ngân hàng có bị báo cáo là lừa đảo',
-              Icons.account_balance,
-              _accountController,
-              'Nhập số tài khoản cần kiểm tra',
-              TextInputType.number,
-            ),
-            const SizedBox(height: 16),
-            // Website verification
-            _buildVerificationOption(
-              'Website',
-              'Kiểm tra website có phải là giả mạo không',
-              Icons.language,
-              _websiteController,
-              'Nhập địa chỉ website cần kiểm tra',
-              TextInputType.url,
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: _isLoading ? null : _verifyInformation,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green.shade700,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              icon: _isLoading
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
-                    )
-                  : const Icon(Icons.verified, color: Colors.white),
-              label: Text(
-                _isLoading ? 'Đang xác thực...' : 'Xác thực ngay',
-                style: const TextStyle(
-                  fontSize: 16,
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'Thông Tin Cần Xác Minh',
+                style: TextStyle(
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-            if (_hasResult) _buildResultCard(),
-          ],
+              const SizedBox(height: 24),
+              // Phone number verification
+              _buildVerificationOption(
+                'Số điện thoại',
+                'Kiểm tra số điện thoại có phải lừa đảo không',
+                Icons.phone,
+                _phoneController,
+                'Nhập số điện thoại cần kiểm tra',
+                TextInputType.phone,
+              ),
+              const SizedBox(height: 16),
+              // Bank account verification
+              _buildVerificationOption(
+                'Tài khoản ngân hàng',
+                'Kiểm tra tài khoản ngân hàng có bị báo cáo là lừa đảo',
+                Icons.account_balance,
+                _accountController,
+                'Nhập số tài khoản cần kiểm tra',
+                TextInputType.number,
+              ),
+              const SizedBox(height: 16),
+              // Website verification
+              _buildVerificationOption(
+                'Website',
+                'Kiểm tra website có phải là giả mạo không',
+                Icons.language,
+                _websiteController,
+                'Nhập địa chỉ website cần kiểm tra',
+                TextInputType.url,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: _isLoading ? null : _verifyInformation,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green.shade700,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                icon: _isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Icon(Icons.verified, color: Colors.white),
+                label: Text(
+                  _isLoading ? 'Đang xác thực...' : 'Xác thực ngay',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              if (_hasResult) _buildResultCard(),
+            ],
+          ),
         ),
       ),
     );

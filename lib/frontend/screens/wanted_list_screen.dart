@@ -523,7 +523,7 @@ class _WantedListScreenState extends State<WantedListScreen> {
                 ),
                 const SizedBox(height: 16),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     _buildActionButton(
                       Icons.share,
@@ -581,12 +581,19 @@ class _WantedListScreenState extends State<WantedListScreen> {
   }
 
   Widget _buildActionButton(IconData icon, String label, Color color, {required Function() onPressed}) {
-    return TextButton.icon(
-      onPressed: onPressed,
-      icon: Icon(icon, color: color, size: 20),
-      label: Text(
-        label,
-        style: TextStyle(color: color),
+    return Expanded(
+      child: TextButton.icon(
+        onPressed: onPressed,
+        icon: Icon(icon, color: color, size: 20),
+        label: Text(
+          label,
+          style: TextStyle(color: color),
+          overflow: TextOverflow.ellipsis,
+        ),
+        style: TextButton.styleFrom(
+          minimumSize: Size.zero,
+          padding: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+        ),
       ),
     );
   }
