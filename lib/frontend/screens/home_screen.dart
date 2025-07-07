@@ -9,6 +9,7 @@ import 'news_screen.dart';
 import 'risk_warning_screen.dart';
 import 'verification_screen.dart';
 import 'wanted_list_screen.dart';
+import 'bot_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -303,6 +304,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       _buildCircularButton(context, Icons.warning_amber_rounded, 'Cảnh báo', Colors.redAccent, () => Navigator.push(context, MaterialPageRoute(builder: (context) => const RiskWarningScreen()))),
       _buildCircularButton(context, Icons.verified_user_rounded, 'Xác thực', Colors.greenAccent, () => Navigator.push(context, MaterialPageRoute(builder: (context) => const VerificationScreen()))),
       _buildCircularButton(context, Icons.person_search_rounded, 'Truy nã', Colors.purpleAccent, () => Navigator.push(context, MaterialPageRoute(builder: (context) => const WantedListScreen()))),
+      _buildCircularButton(context, Icons.search_rounded, 'Giám Sát MXH', Colors.tealAccent, () => Navigator.push(context, MaterialPageRoute(builder: (context) => const BotScreen()))),
     ];
 
     return GridView.builder(
@@ -348,13 +350,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   Widget _buildContactInfo(BuildContext context) {
     return GestureDetector(
-      onTap: () => _launchZalo(context),
+      onTap: () => _launchFacebook(context),
       child: _buildGlassmorphicContainer(
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.chat_bubble_rounded,
+              Icons.facebook_rounded,
               size: 32,
               color: Colors.lightBlueAccent,
             ),
@@ -368,7 +370,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 ),
                 SizedBox(height: 4),
                 Text(
-                  'Nhấn để mở Zalo',
+                  'Nhấn để mở Facebook',
                   style: TextStyle(fontSize: 13, color: Colors.white70),
                 ),
               ],
@@ -379,22 +381,18 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
-  Future<void> _launchZalo(BuildContext context) async {
-    const zaloUri = 'zalo://';
-    if (await canLaunchUrl(Uri.parse(zaloUri))) {
-      await launchUrl(Uri.parse(zaloUri), mode: LaunchMode.externalApplication);
-    } else {
+  Future<void> _launchFacebook(BuildContext context) async {
+    const facebookUrl = 'https://www.facebook.com/profile.php?id=61577787821766';
+    try {
+      await launchUrl(Uri.parse(facebookUrl), mode: LaunchMode.externalApplication);
+    } catch (e) {
       if (context.mounted) {
-        _showZaloNotInstalledDialog(context);
+        _showErrorDialog(context);
       }
     }
   }
 
-  void _showZaloNotInstalledDialog(BuildContext context) {
-    final storeUrl = Platform.isAndroid
-        ? 'https://play.google.com/store/apps/details?id=com.zing.zalo'
-        : 'https://apps.apple.com/app/id579523206';
-
+  void _showErrorDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (context) => BackdropFilter(
@@ -402,23 +400,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         child: AlertDialog(
           backgroundColor: const Color(0xFF2c3e50).withOpacity(0.85),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('Không tìm thấy Zalo', style: TextStyle(color: Colors.white)),
-          content: const Text('Vui lòng cài đặt Zalo để sử dụng tính năng này.', style: TextStyle(color: Colors.white70)),
+          title: const Text('Không thể mở liên kết', style: TextStyle(color: Colors.white)),
+          content: const Text('Không thể mở trang Facebook. Vui lòng thử lại sau.', style: TextStyle(color: Colors.white70)),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Hủy', style: TextStyle(color: Colors.white)),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.pop(context);
-                await launchUrl(Uri.parse(storeUrl), mode: LaunchMode.externalApplication);
-              },
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.cyanAccent,
-                  foregroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-              child: const Text('Cài đặt'),
+              child: const Text('Đóng', style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
