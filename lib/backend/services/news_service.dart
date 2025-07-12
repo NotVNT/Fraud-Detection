@@ -155,25 +155,68 @@ class NewsService {
                 if (dateParts.length == 3) {
                   final day = int.tryParse(dateParts[0].trim()) ?? 1;
                   final month = int.tryParse(dateParts[1].trim()) ?? 1;
-                  final year = int.tryParse(dateParts[2].trim()) ?? DateTime.now().year;
+                  int year = int.tryParse(dateParts[2].trim()) ?? DateTime.now().year;
+                  // Fix for 2-digit year format
+                  if (year < 100) {
+                    year += 2000;
+                  }
                   publishDate = DateTime(year, month, day);
                 }
               } else if (timeAgo.toLowerCase().contains('hôm qua')) {
-                // Bài đăng "Hôm qua"
+                // Article from "Yesterday"
                 publishDate = DateTime.now().subtract(const Duration(days: 1));
-              } else if (timeAgo.toLowerCase().contains('ngày')) {
-                // Bài đăng trong khoảng "X ngày trước"
-                final parts = timeAgo.split(' ');
-                for (int i = 0; i < parts.length; i++) {
-                  if (parts[i].toLowerCase() == 'ngày' && i > 0) {
-                    final days = int.tryParse(parts[i-1]) ?? 0;
-                    if (days > 0) {
-                      publishDate = DateTime.now().subtract(Duration(days: days));
-                      break;
-                    }
+              } else if (timeAgo.toLowerCase().contains('giờ') || timeAgo.toLowerCase().contains('tiếng')) {
+                // "X hours ago" format
+                final regex = RegExp(r'(\d+)\s*(?:giờ|tiếng)');
+                final match = regex.firstMatch(timeAgo);
+                if (match != null) {
+                  final hours = int.tryParse(match.group(1) ?? '0') ?? 0;
+                  publishDate = DateTime.now().subtract(Duration(hours: hours));
+                }
+              } else if (timeAgo.toLowerCase().contains('ngày') || timeAgo.toLowerCase().contains('hôm')) {
+                // "X days ago" format
+                final regex = RegExp(r'(\d+)\s*(?:ngày|hôm)');
+                final match = regex.firstMatch(timeAgo);
+                if (match != null) {
+                  final days = int.tryParse(match.group(1) ?? '0') ?? 0;
+                  if (days > 0) {
+                    publishDate = DateTime.now().subtract(Duration(days: days));
                   }
                 }
+              } else if (timeAgo.toLowerCase().contains('tuần')) {
+                // "X weeks ago" format
+                final regex = RegExp(r'(\d+)\s*tuần');
+                final match = regex.firstMatch(timeAgo);
+                if (match != null) {
+                  final weeks = int.tryParse(match.group(1) ?? '0') ?? 0;
+                  publishDate = DateTime.now().subtract(Duration(days: weeks * 7));
+                }
+              } else if (timeAgo.toLowerCase().contains('tháng')) {
+                // "X months ago" format
+                final regex = RegExp(r'(\d+)\s*tháng');
+                final match = regex.firstMatch(timeAgo);
+                if (match != null) {
+                  final months = int.tryParse(match.group(1) ?? '0') ?? 0;
+                  // Approximate months as 30 days
+                  publishDate = DateTime.now().subtract(Duration(days: months * 30));
+                }
+              } else if (timeAgo.toLowerCase().contains('phút')) {
+                // "X minutes ago" format - very recent
+                publishDate = DateTime.now();
+              } else if (timeAgo.toLowerCase().contains('vừa xong') || 
+                         timeAgo.toLowerCase().contains('vừa')) {
+                // "Just now" - very recent
+                publishDate = DateTime.now();
               }
+              
+              // Normalize the date by removing seconds and milliseconds for more consistent comparison
+              publishDate = DateTime(
+                publishDate.year,
+                publishDate.month,
+                publishDate.day,
+                publishDate.hour,
+                publishDate.minute,
+              );
               
               // Debug info
               print('Article: ${title.length > 40 ? title.substring(0, 40) : title}... | Date: ${publishDate.toString()} | Raw: $timeAgo');

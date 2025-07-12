@@ -6,6 +6,7 @@ import '../models/news_item.dart';
 import '../../backend/services/news_service.dart';
 import 'package:intl/intl.dart';
 import 'article_detail_screen.dart';
+import 'dart:math';
 
 class NewsScreen extends StatefulWidget {
   const NewsScreen({super.key});
@@ -47,6 +48,11 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
     
     // Initialize filtered items
     _filteredNewsItems = [];
+    
+    // Reset filter if it's set to 'month' (removed option)
+    if (_dateFilter == 'month') {
+      _dateFilter = 'all';
+    }
   }
   
   void _scrollListener() {
@@ -149,32 +155,35 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
       final today = DateTime(now.year, now.month, now.day);
       
       filtered = filtered.where((item) {
-        // Đảm bảo ngày của item là đối tượng DateTime hợp lệ
+        // Skip items with invalid publish date
         if (item.publishDate == null) {
           return false;
         }
         
+        // Normalize the date by removing time components for comparison
         final publishDate = item.publishDate;
         final itemDate = DateTime(publishDate.year, publishDate.month, publishDate.day);
         
         switch (_dateFilter) {
           case 'today':
-            // Chỉ lấy bài đăng trong ngày hôm nay
-            return itemDate.isAtSameMomentAs(today);
+            // Compare normalized dates for exact day match
+            return itemDate.year == today.year && 
+                   itemDate.month == today.month && 
+                   itemDate.day == today.day;
             
           case 'week':
-            // 7 ngày gần nhất kể từ hôm nay trở về trước
-            final weekAgo = today.subtract(const Duration(days: 6)); 
-            
-            // So sánh ngày tháng
-            return !itemDate.isBefore(weekAgo);
+            // 7 days including today
+            final weekAgo = today.subtract(const Duration(days: 6));
+            // Item date should be >= weekAgo and <= today
+            return (itemDate.isAtSameMomentAs(weekAgo) || itemDate.isAfter(weekAgo)) && 
+                   (itemDate.isAtSameMomentAs(today) || itemDate.isBefore(today));
             
           case 'month':
-            // 30 ngày gần nhất kể từ hôm nay trở về trước
-            final monthAgo = today.subtract(const Duration(days: 29)); 
-            
-            // So sánh ngày tháng
-            return !itemDate.isBefore(monthAgo);
+            // 30 days including today
+            final monthAgo = today.subtract(const Duration(days: 29));
+            // Item date should be >= monthAgo and <= today
+            return (itemDate.isAtSameMomentAs(monthAgo) || itemDate.isAfter(monthAgo)) && 
+                   (itemDate.isAtSameMomentAs(today) || itemDate.isBefore(today));
             
           default:
             return true;
@@ -182,9 +191,23 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
       }).toList();
     }
     
+    // Debug the filter results
+    if (_dateFilter != 'all') {
+      print('Date filter applied: $_dateFilter');
+      print('Before filtering: ${_newsItems.length} items');
+      print('After filtering: ${filtered.length} items');
+      
+      if (filtered.isEmpty && _newsItems.isNotEmpty) {
+        // Debug dates to see if there's a parsing issue
+        print('Sample item dates:');
+        for (var i = 0; i < min(5, _newsItems.length); i++) {
+          print('Item $i: ${_newsItems[i].publishDate} (${_newsItems[i].timeAgo})');
+        }
+      }
+    }
+    
     setState(() {
       _filteredNewsItems = filtered;
-      print('Applied filters: ${_filteredNewsItems.length} items remaining from ${_newsItems.length}');
     });
   }
   
@@ -245,6 +268,9 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
   }
   
   void _changeDateFilter(String filter) {
+    // Ignore if trying to set filter to 'month' (removed option)
+    if (filter == 'month') return;
+    
     if (_dateFilter != filter) {
       setState(() {
         _dateFilter = filter;
@@ -455,15 +481,123 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
             _buildDateFilterChip('today', 'Hôm nay'),
             const SizedBox(width: 8),
             _buildDateFilterChip('week', '7 ngày'),
-            const SizedBox(width: 8),
-            _buildDateFilterChip('month', '30 ngày'),
             if (_dateFilter != 'all') ...[
               const SizedBox(width: 16),
               // Hiển thị khoảng thời gian đang lọc
               _buildDateRangeText(),
             ],
+            // Debug button
+            const SizedBox(width: 8),
+            IconButton(
+              icon: const Icon(Icons.bug_report, color: Colors.white70, size: 16),
+              onPressed: () => _showDateDebugInfo(),
+              tooltip: 'Debug dates',
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
           ],
         ),
+      ),
+    );
+  }
+  
+  // Add this new method to show date debugging information
+  void _showDateDebugInfo() {
+    if (_newsItems.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No news items to debug')),
+      );
+      return;
+    }
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1a237e),
+        title: const Text('Date Debug Info', style: TextStyle(color: Colors.white)),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Filter: $_dateFilter', style: const TextStyle(color: Colors.white)),
+              Text('Total items: ${_newsItems.length}', style: const TextStyle(color: Colors.white)),
+              Text('Filtered items: ${_filteredNewsItems.length}', style: const TextStyle(color: Colors.white)),
+              const Divider(color: Colors.white30),
+              const Text('Sample Items:', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ...List.generate(min(5, _newsItems.length), (index) {
+                final item = _newsItems[index];
+                // Check if this item passes the current filter
+                bool passesFilter = false;
+                if (_dateFilter == 'all') {
+                  passesFilter = true;
+                } else {
+                  final now = DateTime.now();
+                  final today = DateTime(now.year, now.month, now.day);
+                  final itemDate = DateTime(
+                    item.publishDate.year, 
+                    item.publishDate.month, 
+                    item.publishDate.day
+                  );
+                  
+                  if (_dateFilter == 'today') {
+                    passesFilter = itemDate.year == today.year && 
+                                   itemDate.month == today.month && 
+                                   itemDate.day == today.day;
+                  } else if (_dateFilter == 'week') {
+                    final weekAgo = today.subtract(const Duration(days: 6));
+                    passesFilter = !itemDate.isBefore(weekAgo) && !itemDate.isAfter(today);
+                  } else if (_dateFilter == 'month') {
+                    final monthAgo = today.subtract(const Duration(days: 29));
+                    passesFilter = !itemDate.isBefore(monthAgo) && !itemDate.isAfter(today);
+                  }
+                }
+                
+                // Color code based on filter pass/fail
+                final textColor = passesFilter ? Colors.green : Colors.red;
+                
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Item $index: ${item.title.substring(0, min(30, item.title.length))}...',
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                      Text(
+                        'Date: ${item.publishDate.toString()}',
+                        style: TextStyle(color: textColor),
+                      ),
+                      Text(
+                        'Raw: ${item.timeAgo}',
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                      const Divider(color: Colors.white30),
+                    ],
+                  ),
+                );
+              }),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close', style: TextStyle(color: Colors.white)),
+          ),
+          TextButton(
+            onPressed: () {
+              // Force refresh the filters
+              _applyFilters();
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Filters reapplied')),
+              );
+            },
+            child: const Text('Refresh Filters', style: TextStyle(color: Colors.lightBlueAccent)),
+          ),
+        ],
       ),
     );
   }
@@ -684,34 +818,6 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
                   ),
                 ),
               ),
-              // Source tag in top-right
-              if (news.imageUrl != 'no_image')
-                Positioned(
-                  top: 12,
-                  right: 12,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.6),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.photo_camera, size: 12, color: Colors.white70),
-                        const SizedBox(width: 4),
-                        Text(
-                          news.source,
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: Colors.white70,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
               // Content
               Positioned(
                 bottom: 16,
@@ -722,22 +828,6 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
                   children: [
                     Row(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: Colors.redAccent,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            news.source.toUpperCase(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
                         Flexible(
                           child: Text(
                             news.timeAgo,
