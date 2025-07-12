@@ -155,25 +155,68 @@ class NewsService {
                 if (dateParts.length == 3) {
                   final day = int.tryParse(dateParts[0].trim()) ?? 1;
                   final month = int.tryParse(dateParts[1].trim()) ?? 1;
-                  final year = int.tryParse(dateParts[2].trim()) ?? DateTime.now().year;
+                  int year = int.tryParse(dateParts[2].trim()) ?? DateTime.now().year;
+                  // Fix for 2-digit year format
+                  if (year < 100) {
+                    year += 2000;
+                  }
                   publishDate = DateTime(year, month, day);
                 }
               } else if (timeAgo.toLowerCase().contains('hôm qua')) {
-                // Bài đăng "Hôm qua"
+                // Article from "Yesterday"
                 publishDate = DateTime.now().subtract(const Duration(days: 1));
-              } else if (timeAgo.toLowerCase().contains('ngày')) {
-                // Bài đăng trong khoảng "X ngày trước"
-                final parts = timeAgo.split(' ');
-                for (int i = 0; i < parts.length; i++) {
-                  if (parts[i].toLowerCase() == 'ngày' && i > 0) {
-                    final days = int.tryParse(parts[i-1]) ?? 0;
-                    if (days > 0) {
-                      publishDate = DateTime.now().subtract(Duration(days: days));
-                      break;
-                    }
+              } else if (timeAgo.toLowerCase().contains('giờ') || timeAgo.toLowerCase().contains('tiếng')) {
+                // "X hours ago" format
+                final regex = RegExp(r'(\d+)\s*(?:giờ|tiếng)');
+                final match = regex.firstMatch(timeAgo);
+                if (match != null) {
+                  final hours = int.tryParse(match.group(1) ?? '0') ?? 0;
+                  publishDate = DateTime.now().subtract(Duration(hours: hours));
+                }
+              } else if (timeAgo.toLowerCase().contains('ngày') || timeAgo.toLowerCase().contains('hôm')) {
+                // "X days ago" format
+                final regex = RegExp(r'(\d+)\s*(?:ngày|hôm)');
+                final match = regex.firstMatch(timeAgo);
+                if (match != null) {
+                  final days = int.tryParse(match.group(1) ?? '0') ?? 0;
+                  if (days > 0) {
+                    publishDate = DateTime.now().subtract(Duration(days: days));
                   }
                 }
+              } else if (timeAgo.toLowerCase().contains('tuần')) {
+                // "X weeks ago" format
+                final regex = RegExp(r'(\d+)\s*tuần');
+                final match = regex.firstMatch(timeAgo);
+                if (match != null) {
+                  final weeks = int.tryParse(match.group(1) ?? '0') ?? 0;
+                  publishDate = DateTime.now().subtract(Duration(days: weeks * 7));
+                }
+              } else if (timeAgo.toLowerCase().contains('tháng')) {
+                // "X months ago" format
+                final regex = RegExp(r'(\d+)\s*tháng');
+                final match = regex.firstMatch(timeAgo);
+                if (match != null) {
+                  final months = int.tryParse(match.group(1) ?? '0') ?? 0;
+                  // Approximate months as 30 days
+                  publishDate = DateTime.now().subtract(Duration(days: months * 30));
+                }
+              } else if (timeAgo.toLowerCase().contains('phút')) {
+                // "X minutes ago" format - very recent
+                publishDate = DateTime.now();
+              } else if (timeAgo.toLowerCase().contains('vừa xong') || 
+                         timeAgo.toLowerCase().contains('vừa')) {
+                // "Just now" - very recent
+                publishDate = DateTime.now();
               }
+              
+              // Normalize the date by removing seconds and milliseconds for more consistent comparison
+              publishDate = DateTime(
+                publishDate.year,
+                publishDate.month,
+                publishDate.day,
+                publishDate.hour,
+                publishDate.minute,
+              );
               
               // Debug info
               print('Article: ${title.length > 40 ? title.substring(0, 40) : title}... | Date: ${publishDate.toString()} | Raw: $timeAgo');
@@ -218,6 +261,98 @@ class NewsService {
     } catch (e) {
       print('Error fetching news: $e');
       return [];
+    }
+  }
+  
+  // New method to fetch article content
+  Future<Map<String, dynamic>> fetchArticleContent(String url) async {
+    try {
+      // Send HTTP request to article URL
+      final response = await http.get(Uri.parse(url));
+      
+      if (response.statusCode == 200) {
+        // Parse the HTML content
+        Document document = parser.parse(response.body);
+        
+        // Extract article title
+        final titleElement = document.querySelector('h1.the-article-title');
+        final title = titleElement?.text.trim() ?? '';
+        
+        // Extract article description/summary
+        final descElement = document.querySelector('.the-article-summary');
+        final description = descElement?.text.trim() ?? '';
+        
+        // Extract main article content
+        final contentElement = document.querySelector('.the-article-body');
+        List<Map<String, dynamic>> contentBlocks = [];
+        
+        if (contentElement != null) {
+          // Process paragraphs
+          final paragraphs = contentElement.querySelectorAll('p');
+          for (var p in paragraphs) {
+            contentBlocks.add({
+              'type': 'paragraph',
+              'content': p.text.trim(),
+            });
+          }
+          
+          // Process images
+          final figures = contentElement.querySelectorAll('figure');
+          for (var figure in figures) {
+            final imgElement = figure.querySelector('img');
+            final captionElement = figure.querySelector('figcaption');
+            
+            String imageUrl = '';
+            if (imgElement != null) {
+              // Try data-src first (lazy loading)
+              imageUrl = imgElement.attributes['data-src'] ?? '';
+              
+              // If data-src is empty, try src
+              if (imageUrl.isEmpty) {
+                imageUrl = imgElement.attributes['src'] ?? '';
+              }
+              
+              // Handle relative URLs
+              if (imageUrl.isNotEmpty && !imageUrl.startsWith('http')) {
+                imageUrl = imageUrl.startsWith('/') ? 'https://znews.vn$imageUrl' : 'https://znews.vn/$imageUrl';
+              }
+            }
+            
+            // Skip if no image found
+            if (imageUrl.isEmpty) {
+              continue;
+            }
+            
+            contentBlocks.add({
+              'type': 'image',
+              'url': imageUrl,
+              'caption': captionElement?.text.trim() ?? '',
+            });
+          }
+        }
+        
+        // Extract author info
+        final authorElement = document.querySelector('.author');
+        final author = authorElement?.text.trim() ?? 'ZNews';
+        
+        // Extract publish time
+        final timeElement = document.querySelector('.the-article-meta .the-article-publish');
+        final publishTime = timeElement?.text.trim() ?? '';
+        
+        return {
+          'title': title,
+          'description': description,
+          'content': contentBlocks,
+          'author': author,
+          'publishTime': publishTime,
+          'url': url,
+        };
+      } else {
+        throw Exception('Failed to load article content: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching article content: $e');
+      throw Exception('Không thể tải nội dung bài viết');
     }
   }
   

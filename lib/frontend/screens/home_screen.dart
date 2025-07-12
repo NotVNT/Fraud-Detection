@@ -348,7 +348,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   Widget _buildContactInfo(BuildContext context) {
     return GestureDetector(
-      onTap: () => _launchZalo(context),
+      onTap: () => _launchFacebook(context),
       child: _buildGlassmorphicContainer(
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -368,7 +368,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 ),
                 SizedBox(height: 4),
                 Text(
-                  'Nhấn để mở Zalo',
+                  'Nhấn để mở Facebook',
                   style: TextStyle(fontSize: 13, color: Colors.white70),
                 ),
               ],
@@ -379,22 +379,18 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
-  Future<void> _launchZalo(BuildContext context) async {
-    const zaloUri = 'zalo://';
-    if (await canLaunchUrl(Uri.parse(zaloUri))) {
-      await launchUrl(Uri.parse(zaloUri), mode: LaunchMode.externalApplication);
+  Future<void> _launchFacebook(BuildContext context) async {
+    const facebookUrl = 'https://www.facebook.com/profile.php?id=61577787821766';
+    if (await canLaunchUrl(Uri.parse(facebookUrl))) {
+      await launchUrl(Uri.parse(facebookUrl), mode: LaunchMode.externalApplication);
     } else {
       if (context.mounted) {
-        _showZaloNotInstalledDialog(context);
+        _showFacebookNotInstalledDialog(context);
       }
     }
   }
 
-  void _showZaloNotInstalledDialog(BuildContext context) {
-    final storeUrl = Platform.isAndroid
-        ? 'https://play.google.com/store/apps/details?id=com.zing.zalo'
-        : 'https://apps.apple.com/app/id579523206';
-
+  void _showFacebookNotInstalledDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (context) => BackdropFilter(
@@ -402,23 +398,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         child: AlertDialog(
           backgroundColor: const Color(0xFF2c3e50).withOpacity(0.85),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('Không tìm thấy Zalo', style: TextStyle(color: Colors.white)),
-          content: const Text('Vui lòng cài đặt Zalo để sử dụng tính năng này.', style: TextStyle(color: Colors.white70)),
+          title: const Text('Không thể mở Facebook', style: TextStyle(color: Colors.white)),
+          content: const Text('Vui lòng thử lại sau.', style: TextStyle(color: Colors.white70)),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Hủy', style: TextStyle(color: Colors.white)),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.pop(context);
-                await launchUrl(Uri.parse(storeUrl), mode: LaunchMode.externalApplication);
-              },
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.cyanAccent,
-                  foregroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-              child: const Text('Cài đặt'),
+              child: const Text('Đóng', style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
