@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/news_item.dart';
 import '../../backend/services/news_service.dart';
 import 'package:intl/intl.dart';
+import 'article_detail_screen.dart';
 
 class NewsScreen extends StatefulWidget {
   const NewsScreen({super.key});
@@ -253,18 +254,21 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
   }
 
   Future<void> _openArticle(String url) async {
-    final Uri uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Không thể mở bài viết'),
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
+    // Navigate to article detail screen instead of opening URL
+    if (!mounted) return;
+    
+    // Find the news item with the given URL
+    final newsItem = _newsItems.firstWhere(
+      (item) => item.articleUrl == url,
+      orElse: () => _newsItems.first,
+    );
+    
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ArticleDetailScreen(newsItem: newsItem),
+      ),
+    );
   }
 
   @override

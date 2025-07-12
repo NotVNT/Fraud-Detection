@@ -42,12 +42,7 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
-        <!-- Add Zalo URI scheme -->
-        <intent>
-            <action android:name="android.intent.action.VIEW" />
-            <data android:scheme="zalo" />
-        </intent>
-        <!-- Add browser fallback -->
+        <!-- Browser for opening web URLs -->
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="https" />

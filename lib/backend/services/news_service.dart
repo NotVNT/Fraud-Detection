@@ -221,6 +221,98 @@ class NewsService {
     }
   }
   
+  // New method to fetch article content
+  Future<Map<String, dynamic>> fetchArticleContent(String url) async {
+    try {
+      // Send HTTP request to article URL
+      final response = await http.get(Uri.parse(url));
+      
+      if (response.statusCode == 200) {
+        // Parse the HTML content
+        Document document = parser.parse(response.body);
+        
+        // Extract article title
+        final titleElement = document.querySelector('h1.the-article-title');
+        final title = titleElement?.text.trim() ?? '';
+        
+        // Extract article description/summary
+        final descElement = document.querySelector('.the-article-summary');
+        final description = descElement?.text.trim() ?? '';
+        
+        // Extract main article content
+        final contentElement = document.querySelector('.the-article-body');
+        List<Map<String, dynamic>> contentBlocks = [];
+        
+        if (contentElement != null) {
+          // Process paragraphs
+          final paragraphs = contentElement.querySelectorAll('p');
+          for (var p in paragraphs) {
+            contentBlocks.add({
+              'type': 'paragraph',
+              'content': p.text.trim(),
+            });
+          }
+          
+          // Process images
+          final figures = contentElement.querySelectorAll('figure');
+          for (var figure in figures) {
+            final imgElement = figure.querySelector('img');
+            final captionElement = figure.querySelector('figcaption');
+            
+            String imageUrl = '';
+            if (imgElement != null) {
+              // Try data-src first (lazy loading)
+              imageUrl = imgElement.attributes['data-src'] ?? '';
+              
+              // If data-src is empty, try src
+              if (imageUrl.isEmpty) {
+                imageUrl = imgElement.attributes['src'] ?? '';
+              }
+              
+              // Handle relative URLs
+              if (imageUrl.isNotEmpty && !imageUrl.startsWith('http')) {
+                imageUrl = imageUrl.startsWith('/') ? 'https://znews.vn$imageUrl' : 'https://znews.vn/$imageUrl';
+              }
+            }
+            
+            // Skip if no image found
+            if (imageUrl.isEmpty) {
+              continue;
+            }
+            
+            contentBlocks.add({
+              'type': 'image',
+              'url': imageUrl,
+              'caption': captionElement?.text.trim() ?? '',
+            });
+          }
+        }
+        
+        // Extract author info
+        final authorElement = document.querySelector('.author');
+        final author = authorElement?.text.trim() ?? 'ZNews';
+        
+        // Extract publish time
+        final timeElement = document.querySelector('.the-article-meta .the-article-publish');
+        final publishTime = timeElement?.text.trim() ?? '';
+        
+        return {
+          'title': title,
+          'description': description,
+          'content': contentBlocks,
+          'author': author,
+          'publishTime': publishTime,
+          'url': url,
+        };
+      } else {
+        throw Exception('Failed to load article content: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching article content: $e');
+      throw Exception('Không thể tải nội dung bài viết');
+    }
+  }
+  
   // Available categories in ZNews
   List<String> getCategories() {
     return [
