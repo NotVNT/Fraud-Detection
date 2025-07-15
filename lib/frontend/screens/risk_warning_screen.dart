@@ -7,15 +7,16 @@ class RiskWarningScreen extends StatefulWidget {
   State<RiskWarningScreen> createState() => _RiskWarningScreenState();
 }
 
-class _RiskWarningScreenState extends State<RiskWarningScreen> with SingleTickerProviderStateMixin {
+class _RiskWarningScreenState extends State<RiskWarningScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
   }
-  
+
   @override
   void dispose() {
     _tabController.dispose();
@@ -89,9 +90,7 @@ class _RiskWarningScreenState extends State<RiskWarningScreen> with SingleTicker
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       elevation: 8,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Column(
         children: [
           Container(
@@ -104,10 +103,7 @@ class _RiskWarningScreenState extends State<RiskWarningScreen> with SingleTicker
             ),
             child: Row(
               children: [
-                Icon(
-                  _getSeverityIcon(warning.severity),
-                  color: Colors.white,
-                ),
+                Icon(_getSeverityIcon(warning.severity), color: Colors.white),
                 const SizedBox(width: 8),
                 Text(
                   _getSeverityText(warning.severity),
@@ -119,10 +115,7 @@ class _RiskWarningScreenState extends State<RiskWarningScreen> with SingleTicker
                 const Spacer(),
                 Text(
                   warning.date,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                  ),
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
                 ),
               ],
             ),
@@ -156,12 +149,7 @@ class _RiskWarningScreenState extends State<RiskWarningScreen> with SingleTicker
                   ),
                 ),
                 const SizedBox(height: 12),
-                Text(
-                  warning.description,
-                  style: const TextStyle(
-                    fontSize: 15,
-                  ),
-                ),
+                Text(warning.description, style: const TextStyle(fontSize: 15)),
                 const SizedBox(height: 16),
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -192,9 +180,7 @@ class _RiskWarningScreenState extends State<RiskWarningScreen> with SingleTicker
                                 color: Colors.red,
                               ),
                               const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(sign),
-                              ),
+                              Expanded(child: Text(sign)),
                             ],
                           ),
                         );
@@ -206,16 +192,8 @@ class _RiskWarningScreenState extends State<RiskWarningScreen> with SingleTicker
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    _buildActionButton(
-                      Icons.share,
-                      'Chia sẻ',
-                      Colors.blue,
-                    ),
-                    _buildActionButton(
-                      Icons.report,
-                      'Báo cáo',
-                      Colors.orange,
-                    ),
+                    _buildActionButton(Icons.share, 'Chia sẻ', Colors.blue),
+                    _buildActionButton(Icons.report, 'Báo cáo', Colors.orange),
                     _buildActionButton(
                       Icons.help_outline,
                       'Trợ giúp',
@@ -235,10 +213,7 @@ class _RiskWarningScreenState extends State<RiskWarningScreen> with SingleTicker
     return TextButton.icon(
       onPressed: () {},
       icon: Icon(icon, color: color, size: 20),
-      label: Text(
-        label,
-        style: TextStyle(color: color),
-      ),
+      label: Text(label, style: TextStyle(color: color)),
     );
   }
 
@@ -322,10 +297,7 @@ class _RiskWarningScreenState extends State<RiskWarningScreen> with SingleTicker
                     value: 'withdrawal',
                     child: Text('Rút tiền ATM'),
                   ),
-                  DropdownMenuItem(
-                    value: 'other',
-                    child: Text('Khác'),
-                  ),
+                  DropdownMenuItem(value: 'other', child: Text('Khác')),
                 ],
                 onChanged: (value) {},
               ),
@@ -336,18 +308,9 @@ class _RiskWarningScreenState extends State<RiskWarningScreen> with SingleTicker
                   border: OutlineInputBorder(),
                 ),
                 items: const [
-                  DropdownMenuItem(
-                    value: 1,
-                    child: Text('Nguy cơ thấp'),
-                  ),
-                  DropdownMenuItem(
-                    value: 2,
-                    child: Text('Nguy cơ cao'),
-                  ),
-                  DropdownMenuItem(
-                    value: 3,
-                    child: Text('Rất nguy hiểm'),
-                  ),
+                  DropdownMenuItem(value: 1, child: Text('Nguy cơ thấp')),
+                  DropdownMenuItem(value: 2, child: Text('Nguy cơ cao')),
+                  DropdownMenuItem(value: 3, child: Text('Rất nguy hiểm')),
                 ],
                 onChanged: (value) {},
               ),
@@ -396,7 +359,8 @@ class WarningItem {
 final List<WarningItem> _latestWarnings = [
   WarningItem(
     title: 'Lừa đảo qua QR Code giả mạo',
-    description: 'Các đối tượng tạo mã QR giả mạo để chiếm đoạt thông tin tài khoản ngân hàng hoặc chuyển tiền.',
+    description:
+        'Các đối tượng tạo mã QR giả mạo để chiếm đoạt thông tin tài khoản ngân hàng hoặc chuyển tiền.',
     transactionType: 'Thanh toán QR',
     signs: [
       'QR code được gửi qua tin nhắn từ người lạ',
@@ -408,7 +372,8 @@ final List<WarningItem> _latestWarnings = [
   ),
   WarningItem(
     title: 'Chiêu trò hoàn tiền giả mạo',
-    description: 'Lừa đảo gọi điện thông báo hoàn tiền từ các sàn thương mại điện tử và yêu cầu chuyển phí xác minh.',
+    description:
+        'Lừa đảo gọi điện thông báo hoàn tiền từ các sàn thương mại điện tử và yêu cầu chuyển phí xác minh.',
     transactionType: 'Chuyển khoản',
     signs: [
       'Cuộc gọi từ người tự xưng là nhân viên sàn TMĐT',
@@ -420,7 +385,8 @@ final List<WarningItem> _latestWarnings = [
   ),
   WarningItem(
     title: 'Lừa đảo đầu tư tiền điện tử',
-    description: 'Các đối tượng mời gọi đầu tư vào các dự án tiền điện tử với lãi suất cực cao nhưng thực chất là lừa đảo.',
+    description:
+        'Các đối tượng mời gọi đầu tư vào các dự án tiền điện tử với lãi suất cực cao nhưng thực chất là lừa đảo.',
     transactionType: 'Đầu tư tiền ảo',
     signs: [
       'Hứa hẹn lợi nhuận từ 30-50% mỗi tháng',
@@ -436,7 +402,8 @@ final List<WarningItem> _latestWarnings = [
 final List<WarningItem> _trendingWarnings = [
   WarningItem(
     title: 'Giả mạo ứng dụng ngân hàng',
-    description: 'Xuất hiện nhiều ứng dụng giả mạo các ứng dụng ngân hàng lớn trên các kho ứng dụng không chính thức.',
+    description:
+        'Xuất hiện nhiều ứng dụng giả mạo các ứng dụng ngân hàng lớn trên các kho ứng dụng không chính thức.',
     transactionType: 'Giao dịch trực tuyến',
     signs: [
       'Ứng dụng yêu cầu quá nhiều quyền truy cập',
@@ -448,7 +415,8 @@ final List<WarningItem> _trendingWarnings = [
   ),
   WarningItem(
     title: 'Gọi điện giả danh công an',
-    description: 'Các đối tượng giả danh công an, viện kiểm sát gọi điện thông báo liên quan đến vụ án và yêu cầu chuyển tiền để xác minh.',
+    description:
+        'Các đối tượng giả danh công an, viện kiểm sát gọi điện thông báo liên quan đến vụ án và yêu cầu chuyển tiền để xác minh.',
     transactionType: 'Chuyển khoản',
     signs: [
       'Gọi từ số điện thoại lạ, có thể giả số cơ quan công an',
@@ -463,7 +431,8 @@ final List<WarningItem> _trendingWarnings = [
 final List<WarningItem> _severeWarnings = [
   WarningItem(
     title: 'Deepfake video call lừa đảo',
-    description: 'Sử dụng công nghệ AI để giả mạo cuộc gọi video của người thân, yêu cầu chuyển tiền khẩn cấp trong trường hợp "nguy hiểm".',
+    description:
+        'Sử dụng công nghệ AI để giả mạo cuộc gọi video của người thân, yêu cầu chuyển tiền khẩn cấp trong trường hợp "nguy hiểm".',
     transactionType: 'Chuyển khoản',
     signs: [
       'Cuộc gọi video có chất lượng hình ảnh không đồng đều',
@@ -476,7 +445,8 @@ final List<WarningItem> _severeWarnings = [
   ),
   WarningItem(
     title: 'Giả mạo CSGT phạt nguội trực tuyến',
-    description: 'Đối tượng gửi tin nhắn thông báo phạt nguội, yêu cầu nộp phạt qua đường link giả mạo để đánh cắp thông tin thẻ.',
+    description:
+        'Đối tượng gửi tin nhắn thông báo phạt nguội, yêu cầu nộp phạt qua đường link giả mạo để đánh cắp thông tin thẻ.',
     transactionType: 'Thanh toán trực tuyến',
     signs: [
       'Tin nhắn SMS hoặc email có chứa link thanh toán',
@@ -487,4 +457,4 @@ final List<WarningItem> _severeWarnings = [
     date: '01/11/2023',
     severity: 3,
   ),
-]; 
+];

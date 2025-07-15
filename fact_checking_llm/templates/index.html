@@ -1,0 +1,11 @@
+<!doctype html>
+<title>Kiểm tra tin giả từ ảnh</title>
+<h2>Tải ảnh chứa tin cần kiểm tra:</h2>
+<form method="post" enctype="multipart/form-data">
+    <input type="file" name="image" accept="image/*"><br><br>
+    <input type="submit" value="Kiểm tra">
+</form>
+{% if result %}
+<h3>Kết quả:</h3>
+<pre>{{ result }}</pre>
+{% endif %}

@@ -1,7 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:url_launcher/url_launcher.dart';
+// import 'package:url_launcher/url_launcher.dart'; flag = 0
 import '../models/news_item.dart';
 import '../../backend/services/news_service.dart';
 import 'package:intl/intl.dart';
@@ -15,7 +15,8 @@ class NewsScreen extends StatefulWidget {
   State<NewsScreen> createState() => _NewsScreenState();
 }
 
-class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateMixin {
+class _NewsScreenState extends State<NewsScreen>
+    with SingleTickerProviderStateMixin {
   final NewsService _newsService = NewsService();
   List<NewsItem> _newsItems = [];
   List<NewsItem> _filteredNewsItems = [];
@@ -29,7 +30,7 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
   final ScrollController _scrollController = ScrollController();
   String _selectedCategory = '';
   String _dateFilter = 'all'; // 'all', 'today', 'week', 'month'
-  
+
   // Get the list of available categories
   List<String> get _categories => _newsService.getCategories();
   Map<String, String> get _categoryNames => _newsService.getCategoryNames();
@@ -42,23 +43,24 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
       vsync: this,
       duration: const Duration(milliseconds: 1000),
     );
-    
+
     // Add scroll listener for pagination
     _scrollController.addListener(_scrollListener);
-    
+
     // Initialize filtered items
     _filteredNewsItems = [];
-    
+
     // Reset filter if it's set to 'month' (removed option)
     if (_dateFilter == 'month') {
       _dateFilter = 'all';
     }
   }
-  
+
   void _scrollListener() {
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent * 0.8 &&
-        !_isLoading && 
-        !_isLoadingMore && 
+    if (_scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent * 0.8 &&
+        !_isLoading &&
+        !_isLoadingMore &&
         _hasMoreData) {
       _loadMoreNews();
     }
@@ -71,20 +73,20 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
     _animationController.dispose();
     super.dispose();
   }
-  
+
   Future<void> _loadNews() async {
     setState(() {
       _isLoading = true;
       _hasError = false;
       _errorMessage = '';
     });
-    
+
     try {
       final news = await _newsService.fetchZNewsArticles(
         page: _currentPage,
         category: _selectedCategory,
       );
-      
+
       setState(() {
         _newsItems = news;
         _debugPrintArticleDates(); // Debug dates
@@ -101,44 +103,44 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
       });
     }
   }
-  
+
   // For debugging dates
   void _debugPrintArticleDates() {
     if (_newsItems.isEmpty) {
       print('No articles to debug');
       return;
     }
-    
+
     print('===== DEBUG DATES =====');
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final weekAgo = today.subtract(const Duration(days: 6));
     final monthAgo = today.subtract(const Duration(days: 29));
-    
+
     int todayCount = 0;
     int weekCount = 0;
     int monthCount = 0;
-    
+
     for (var item in _newsItems) {
       final itemDate = DateTime(
         item.publishDate.year,
         item.publishDate.month,
         item.publishDate.day,
       );
-      
+
       if (itemDate.isAtSameMomentAs(today)) {
         todayCount++;
       }
-      
+
       if (!itemDate.isBefore(weekAgo)) {
         weekCount++;
       }
-      
+
       if (!itemDate.isBefore(monthAgo)) {
         monthCount++;
       }
     }
-    
+
     print('Today count: $todayCount articles');
     print('Week count: $weekCount articles');
     print('Month count: $monthCount articles');
@@ -148,83 +150,91 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
 
   void _applyFilters() {
     List<NewsItem> filtered = List.from(_newsItems);
-    
+
     // Apply date filter
     if (_dateFilter != 'all') {
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
-      
+
       filtered = filtered.where((item) {
-        // Skip items with invalid publish date
-        if (item.publishDate == null) {
-          return false;
-        }
-        
+        // Skip items with invalid publish date flag = 1
+        // if (item.publishDate == null) {
+        //   return false;
+        // }
+
         // Normalize the date by removing time components for comparison
         final publishDate = item.publishDate;
-        final itemDate = DateTime(publishDate.year, publishDate.month, publishDate.day);
-        
+        final itemDate = DateTime(
+          publishDate.year,
+          publishDate.month,
+          publishDate.day,
+        );
+
         switch (_dateFilter) {
           case 'today':
             // Compare normalized dates for exact day match
-            return itemDate.year == today.year && 
-                   itemDate.month == today.month && 
-                   itemDate.day == today.day;
-            
+            return itemDate.year == today.year &&
+                itemDate.month == today.month &&
+                itemDate.day == today.day;
+
           case 'week':
             // 7 days including today
             final weekAgo = today.subtract(const Duration(days: 6));
             // Item date should be >= weekAgo and <= today
-            return (itemDate.isAtSameMomentAs(weekAgo) || itemDate.isAfter(weekAgo)) && 
-                   (itemDate.isAtSameMomentAs(today) || itemDate.isBefore(today));
-            
+            return (itemDate.isAtSameMomentAs(weekAgo) ||
+                    itemDate.isAfter(weekAgo)) &&
+                (itemDate.isAtSameMomentAs(today) || itemDate.isBefore(today));
+
           case 'month':
             // 30 days including today
             final monthAgo = today.subtract(const Duration(days: 29));
             // Item date should be >= monthAgo and <= today
-            return (itemDate.isAtSameMomentAs(monthAgo) || itemDate.isAfter(monthAgo)) && 
-                   (itemDate.isAtSameMomentAs(today) || itemDate.isBefore(today));
-            
+            return (itemDate.isAtSameMomentAs(monthAgo) ||
+                    itemDate.isAfter(monthAgo)) &&
+                (itemDate.isAtSameMomentAs(today) || itemDate.isBefore(today));
+
           default:
             return true;
         }
       }).toList();
     }
-    
+
     // Debug the filter results
     if (_dateFilter != 'all') {
       print('Date filter applied: $_dateFilter');
       print('Before filtering: ${_newsItems.length} items');
       print('After filtering: ${filtered.length} items');
-      
+
       if (filtered.isEmpty && _newsItems.isNotEmpty) {
         // Debug dates to see if there's a parsing issue
         print('Sample item dates:');
         for (var i = 0; i < min(5, _newsItems.length); i++) {
-          print('Item $i: ${_newsItems[i].publishDate} (${_newsItems[i].timeAgo})');
+          print(
+            'Item $i: ${_newsItems[i].publishDate} (${_newsItems[i].timeAgo})',
+          );
         }
       }
     }
-    
+
     setState(() {
       _filteredNewsItems = filtered;
     });
   }
-  
+
   Future<void> _loadMoreNews() async {
     if (_isLoadingMore) return;
-    
+
     setState(() {
       _isLoadingMore = true;
     });
-    
+
     try {
       _currentPage++;
       final moreNews = await _newsService.fetchZNewsArticles(
         page: _currentPage,
         category: _selectedCategory,
       );
-      
+
       setState(() {
         if (moreNews.isNotEmpty) {
           _newsItems.addAll(moreNews);
@@ -240,7 +250,7 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
         _isLoadingMore = false;
         _currentPage--; // Revert page increment on error
       });
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -256,7 +266,7 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
     _currentPage = 1;
     await _loadNews();
   }
-  
+
   void _changeCategory(String category) {
     if (_selectedCategory != category) {
       setState(() {
@@ -266,11 +276,11 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
       _refreshNews();
     }
   }
-  
+
   void _changeDateFilter(String filter) {
     // Ignore if trying to set filter to 'month' (removed option)
     if (filter == 'month') return;
-    
+
     if (_dateFilter != filter) {
       setState(() {
         _dateFilter = filter;
@@ -282,13 +292,13 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
   Future<void> _openArticle(String url) async {
     // Navigate to article detail screen instead of opening URL
     if (!mounted) return;
-    
+
     // Find the news item with the given URL
     final newsItem = _newsItems.firstWhere(
       (item) => item.articleUrl == url,
       orElse: () => _newsItems.first,
     );
-    
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -303,8 +313,11 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
       extendBodyBehindAppBar: true,
       backgroundColor: const Color(0xFF1a237e),
       appBar: AppBar(
-        title: const Text('Tin Tức Nóng', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white.withOpacity(0.1),
+        title: const Text(
+          'Tin Tức Nóng',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: Colors.white.withValues(alpha: 0.1),
         foregroundColor: Colors.white,
         elevation: 0,
         flexibleSpace: ClipRRect(
@@ -327,10 +340,13 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
           ),
         ),
         child: SafeArea(
-          child: _isLoading ? _buildLoadingState() : 
-                 _hasError ? _buildErrorState(_errorMessage) :
-                 _newsItems.isEmpty ? _buildEmptyState() : 
-                 _buildNewsListView(),
+          child: _isLoading
+              ? _buildLoadingState()
+              : _hasError
+              ? _buildErrorState(_errorMessage)
+              : _newsItems.isEmpty
+              ? _buildEmptyState()
+              : _buildNewsListView(),
         ),
       ),
     );
@@ -341,10 +357,10 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
       children: [
         // Category tabs
         _buildCategoryTabs(),
-        
+
         // Date filter
         _buildDateFilter(),
-        
+
         // News list
         Expanded(
           child: RefreshIndicator(
@@ -372,9 +388,7 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
                       Flexible(
                         child: Text(
                           '${_filteredNewsItems.length} bài viết',
-                          style: const TextStyle(
-                            color: Colors.white70,
-                          ),
+                          style: const TextStyle(color: Colors.white70),
                           overflow: TextOverflow.ellipsis,
                           textAlign: TextAlign.end,
                         ),
@@ -384,19 +398,24 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
                 ),
                 // News list
                 Expanded(
-                  child: _filteredNewsItems.isEmpty 
+                  child: _filteredNewsItems.isEmpty
                       ? _dateFilter != 'all'
-                          ? _buildNoFilterMatchState()
-                          : _newsItems.isEmpty 
-                              ? _buildEmptyState()
-                              : _buildNoFilterMatchState()
+                            ? _buildNoFilterMatchState()
+                            : _newsItems.isEmpty
+                            ? _buildEmptyState()
+                            : _buildNoFilterMatchState()
                       : ListView.builder(
                           controller: _scrollController,
                           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                          itemCount: _filteredNewsItems.length + (_isLoadingMore || _hasMoreData ? 1 : 0),
+                          itemCount:
+                              _filteredNewsItems.length +
+                              (_isLoadingMore || _hasMoreData ? 1 : 0),
                           itemBuilder: (context, index) {
                             if (index < _filteredNewsItems.length) {
-                              return _buildAnimatedNewsCard(_filteredNewsItems[index], index);
+                              return _buildAnimatedNewsCard(
+                                _filteredNewsItems[index],
+                                index,
+                              );
                             } else {
                               // Show loading indicator at the bottom
                               return _buildLoadMoreIndicator();
@@ -411,12 +430,12 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
       ],
     );
   }
-  
+
   Widget _buildCategoryTabs() {
     return Container(
       height: 50,
       decoration: BoxDecoration(
-        color: Colors.indigo.shade900.withOpacity(0.3),
+        color: Colors.indigo.shade900.withValues(alpha: 0.3),
       ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
@@ -424,26 +443,30 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
         child: Row(
           children: [
             _buildCategoryTab('', 'Tất cả'),
-            ..._categories.map((category) => _buildCategoryTab(
-              category, 
-              _categoryNames[category] ?? category,
-            )),
+            ..._categories.map(
+              (category) => _buildCategoryTab(
+                category,
+                _categoryNames[category] ?? category,
+              ),
+            ),
           ],
         ),
       ),
     );
   }
-  
+
   Widget _buildCategoryTab(String category, String displayName) {
     final isSelected = _selectedCategory == category;
-    
+
     return GestureDetector(
       onTap: () => _changeCategory(category),
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
         padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.white.withOpacity(0.1),
+          color: isSelected
+              ? Colors.white
+              : Colors.white.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Center(
@@ -461,20 +484,17 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
       ),
     );
   }
-  
+
   Widget _buildDateFilter() {
     return Container(
       height: 40,
-      color: Colors.black.withOpacity(0.1),
+      color: Colors.black.withValues(alpha: 0.1),
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
-            const Text(
-              'Lọc theo: ',
-              style: TextStyle(color: Colors.white70),
-            ),
+            const Text('Lọc theo: ', style: TextStyle(color: Colors.white70)),
             const SizedBox(width: 8),
             _buildDateFilterChip('all', 'Tất cả'),
             const SizedBox(width: 8),
@@ -489,7 +509,11 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
             // Debug button
             const SizedBox(width: 8),
             IconButton(
-              icon: const Icon(Icons.bug_report, color: Colors.white70, size: 16),
+              icon: const Icon(
+                Icons.bug_report,
+                color: Colors.white70,
+                size: 16,
+              ),
               onPressed: () => _showDateDebugInfo(),
               tooltip: 'Debug dates',
               padding: EdgeInsets.zero,
@@ -500,31 +524,49 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
       ),
     );
   }
-  
+
   // Add this new method to show date debugging information
   void _showDateDebugInfo() {
     if (_newsItems.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No news items to debug')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('No news items to debug')));
       return;
     }
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1a237e),
-        title: const Text('Date Debug Info', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Date Debug Info',
+          style: TextStyle(color: Colors.white),
+        ),
         content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Filter: $_dateFilter', style: const TextStyle(color: Colors.white)),
-              Text('Total items: ${_newsItems.length}', style: const TextStyle(color: Colors.white)),
-              Text('Filtered items: ${_filteredNewsItems.length}', style: const TextStyle(color: Colors.white)),
+              Text(
+                'Filter: $_dateFilter',
+                style: const TextStyle(color: Colors.white),
+              ),
+              Text(
+                'Total items: ${_newsItems.length}',
+                style: const TextStyle(color: Colors.white),
+              ),
+              Text(
+                'Filtered items: ${_filteredNewsItems.length}',
+                style: const TextStyle(color: Colors.white),
+              ),
               const Divider(color: Colors.white30),
-              const Text('Sample Items:', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              const Text(
+                'Sample Items:',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               ...List.generate(min(5, _newsItems.length), (index) {
                 final item = _newsItems[index];
                 // Check if this item passes the current filter
@@ -535,27 +577,31 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
                   final now = DateTime.now();
                   final today = DateTime(now.year, now.month, now.day);
                   final itemDate = DateTime(
-                    item.publishDate.year, 
-                    item.publishDate.month, 
-                    item.publishDate.day
+                    item.publishDate.year,
+                    item.publishDate.month,
+                    item.publishDate.day,
                   );
-                  
+
                   if (_dateFilter == 'today') {
-                    passesFilter = itemDate.year == today.year && 
-                                   itemDate.month == today.month && 
-                                   itemDate.day == today.day;
+                    passesFilter =
+                        itemDate.year == today.year &&
+                        itemDate.month == today.month &&
+                        itemDate.day == today.day;
                   } else if (_dateFilter == 'week') {
                     final weekAgo = today.subtract(const Duration(days: 6));
-                    passesFilter = !itemDate.isBefore(weekAgo) && !itemDate.isAfter(today);
+                    passesFilter =
+                        !itemDate.isBefore(weekAgo) && !itemDate.isAfter(today);
                   } else if (_dateFilter == 'month') {
                     final monthAgo = today.subtract(const Duration(days: 29));
-                    passesFilter = !itemDate.isBefore(monthAgo) && !itemDate.isAfter(today);
+                    passesFilter =
+                        !itemDate.isBefore(monthAgo) &&
+                        !itemDate.isAfter(today);
                   }
                 }
-                
+
                 // Color code based on filter pass/fail
                 final textColor = passesFilter ? Colors.green : Colors.red;
-                
+
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 8.0),
                   child: Column(
@@ -595,16 +641,19 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
                 const SnackBar(content: Text('Filters reapplied')),
               );
             },
-            child: const Text('Refresh Filters', style: TextStyle(color: Colors.lightBlueAccent)),
+            child: const Text(
+              'Refresh Filters',
+              style: TextStyle(color: Colors.lightBlueAccent),
+            ),
           ),
         ],
       ),
     );
   }
-  
+
   Widget _buildDateFilterChip(String filter, String label) {
     final isSelected = _dateFilter == filter;
-    
+
     return GestureDetector(
       onTap: () => _changeDateFilter(filter),
       child: Container(
@@ -612,9 +661,7 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
         decoration: BoxDecoration(
           color: isSelected ? Colors.white : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected ? Colors.white : Colors.white30,
-          ),
+          border: Border.all(color: isSelected ? Colors.white : Colors.white30),
         ),
         child: Text(
           label,
@@ -627,13 +674,13 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
       ),
     );
   }
-  
+
   Widget _buildDateRangeText() {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     String dateText = '';
     IconData icon = Icons.calendar_today_outlined;
-    
+
     switch (_dateFilter) {
       case 'today':
         final dateFormat = DateFormat('dd/MM/yyyy');
@@ -643,21 +690,23 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
       case 'week':
         final weekAgo = today.subtract(const Duration(days: 6));
         final dateFormat = DateFormat('dd/MM');
-        dateText = '${dateFormat.format(weekAgo)} - ${dateFormat.format(today)}';
+        dateText =
+            '${dateFormat.format(weekAgo)} - ${dateFormat.format(today)}';
         icon = Icons.date_range;
         break;
       case 'month':
         final monthAgo = today.subtract(const Duration(days: 29));
         final dateFormat = DateFormat('dd/MM');
-        dateText = '${dateFormat.format(monthAgo)} - ${dateFormat.format(today)}';
+        dateText =
+            '${dateFormat.format(monthAgo)} - ${dateFormat.format(today)}';
         icon = Icons.date_range;
         break;
     }
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.indigo.shade900.withOpacity(0.3),
+        color: Colors.indigo.shade900.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white24),
       ),
@@ -678,7 +727,7 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
       ),
     );
   }
-  
+
   Widget _buildNoFilterMatchState() {
     String filterText = '';
     switch (_dateFilter) {
@@ -699,7 +748,11 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.filter_list, color: Colors.white.withOpacity(0.6), size: 60),
+          Icon(
+            Icons.filter_list,
+            color: Colors.white.withValues(alpha: 0.6),
+            size: 60,
+          ),
           const SizedBox(height: 16),
           Text(
             'Không có bài viết nào ${filterText.isNotEmpty ? 'trong $filterText' : 'phù hợp'}',
@@ -723,13 +776,22 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
               TextButton.icon(
                 onPressed: () => _changeDateFilter('all'),
                 icon: const Icon(Icons.refresh, color: Colors.white),
-                label: const Text('Xóa bộ lọc thời gian', style: TextStyle(color: Colors.white)),
+                label: const Text(
+                  'Xóa bộ lọc thời gian',
+                  style: TextStyle(color: Colors.white),
+                ),
               ),
               if (_selectedCategory.isNotEmpty)
                 TextButton.icon(
                   onPressed: () => _changeCategory(''),
-                  icon: const Icon(Icons.category_outlined, color: Colors.white),
-                  label: const Text('Xem tất cả danh mục', style: TextStyle(color: Colors.white)),
+                  icon: const Icon(
+                    Icons.category_outlined,
+                    color: Colors.white,
+                  ),
+                  label: const Text(
+                    'Xem tất cả danh mục',
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
             ],
           ),
@@ -742,24 +804,25 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Center(
-        child: _isLoadingMore 
-          ? const CircularProgressIndicator(color: Colors.white)
-          : TextButton(
-              onPressed: _hasMoreData ? _loadMoreNews : null,
-              child: Text(
-                _hasMoreData ? 'Tải thêm tin tức' : 'Đã tải hết tin',
-                style: const TextStyle(color: Colors.white70),
+        child: _isLoadingMore
+            ? const CircularProgressIndicator(color: Colors.white)
+            : TextButton(
+                onPressed: _hasMoreData ? _loadMoreNews : null,
+                child: Text(
+                  _hasMoreData ? 'Tải thêm tin tức' : 'Đã tải hết tin',
+                  style: const TextStyle(color: Colors.white70),
+                ),
               ),
-            ),
       ),
     );
   }
 
   Widget _buildAnimatedNewsCard(NewsItem news, int index) {
     // Calculate animation delay based on current page and index
-    final int absoluteIndex = (_currentPage - 1) * 10 + index;
-    final int delayedIndex = index % 10; // Only animate the first 10 items per page
-    
+    // final int absoluteIndex = (_currentPage - 1) * 10 + index; flag = 2
+    final int delayedIndex =
+        index % 10; // Only animate the first 10 items per page
+
     final animation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _animationController,
@@ -811,8 +874,8 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
                     end: Alignment.bottomCenter,
                     colors: [
                       Colors.transparent,
-                      Colors.black.withOpacity(0.2),
-                      Colors.black.withOpacity(0.8),
+                      Colors.black.withValues(alpha: 0.2),
+                      Colors.black.withValues(alpha: 0.8),
                     ],
                     stops: const [0.4, 0.6, 1.0],
                   ),
@@ -831,13 +894,19 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
                         Flexible(
                           child: Text(
                             news.timeAgo,
-                            style: const TextStyle(color: Colors.white70, fontSize: 13),
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 13,
+                            ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.black45,
                             borderRadius: BorderRadius.circular(4),
@@ -892,7 +961,7 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
       ),
     );
   }
-  
+
   Widget _buildNewsImage(String imageUrl) {
     // Kiểm tra nếu không có hình ảnh
     if (imageUrl == 'no_image') {
@@ -915,13 +984,17 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
             const SizedBox(height: 8),
             const Text(
               'Không có hình ảnh',
-              style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ],
         ),
       );
     }
-    
+
     // Skip processing base64 or data URLs
     if (imageUrl.contains('data:image') || imageUrl.contains('base64')) {
       return Container(
@@ -943,13 +1016,17 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
             const SizedBox(height: 8),
             const Text(
               'Hình ảnh không hỗ trợ',
-              style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ],
         ),
       );
     }
-    
+
     return CachedNetworkImage(
       imageUrl: imageUrl,
       fit: BoxFit.cover,
@@ -959,9 +1036,9 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Colors.indigo.shade900.withOpacity(0.5),
-              Colors.indigo.shade800.withOpacity(0.3),
-              Colors.indigo.shade700.withOpacity(0.5),
+              Colors.indigo.shade900.withValues(alpha: 0.5),
+              Colors.indigo.shade800.withValues(alpha: 0.3),
+              Colors.indigo.shade700.withValues(alpha: 0.5),
             ],
           ),
         ),
@@ -993,7 +1070,11 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
               const SizedBox(height: 8),
               const Text(
                 'Không tải được hình ảnh',
-                style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w500),
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ],
           ),
@@ -1001,7 +1082,8 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
       },
       // Fix for HTTP 403 errors - add headers
       httpHeaders: const {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
         'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
         'Accept-Encoding': 'gzip, deflate, br',
         'Referer': 'https://znews.vn/',
@@ -1022,7 +1104,10 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
         children: [
           CircularProgressIndicator(color: Colors.white),
           SizedBox(height: 20),
-          Text('Đang tải tin tức...', style: TextStyle(color: Colors.white70, fontSize: 16)),
+          Text(
+            'Đang tải tin tức...',
+            style: TextStyle(color: Colors.white70, fontSize: 16),
+          ),
         ],
       ),
     );
@@ -1035,11 +1120,19 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.cloud_off_rounded, color: Colors.white70, size: 60),
+            const Icon(
+              Icons.cloud_off_rounded,
+              color: Colors.white70,
+              size: 60,
+            ),
             const SizedBox(height: 20),
             const Text(
               'Lỗi kết nối',
-              style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 10),
             Text(
@@ -1055,7 +1148,9 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
               style: ElevatedButton.styleFrom(
                 foregroundColor: Colors.black,
                 backgroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
           ],
@@ -1073,7 +1168,11 @@ class _NewsScreenState extends State<NewsScreen> with SingleTickerProviderStateM
           SizedBox(height: 20),
           Text(
             'Không có tin tức',
-            style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           SizedBox(height: 10),
           Text(
