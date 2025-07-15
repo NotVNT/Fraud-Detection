@@ -1,5 +1,4 @@
 import 'dart:ui';
-import 'dart:io' show Platform;
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -9,6 +8,7 @@ import 'news_screen.dart';
 import 'risk_warning_screen.dart';
 import 'verification_screen.dart';
 import 'wanted_list_screen.dart';
+import 'verify_news.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,7 +17,8 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   bool _showNotificationBox = true;
@@ -35,16 +36,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       curve: Curves.easeIn,
     );
     _animationController.forward();
-    
+
     // Add decorative floating security icons
     _addFloatingSecurityIcons();
   }
-  
+
   void _addFloatingSecurityIcons() {
     final random = math.Random();
     final screenWidth = 400.0; // Approximate screen width
     final screenHeight = 800.0; // Approximate screen height
-    
+
     // Security-related icons
     final securityIcons = [
       Icons.security,
@@ -56,7 +57,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       Icons.health_and_safety,
       Icons.shield_moon,
     ];
-    
+
     // Security-related colors
     final colors = [
       Colors.blue.shade300,
@@ -66,7 +67,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       Colors.teal.shade300,
       Colors.indigo.shade300,
     ];
-    
+
     // Create 8 floating icons
     for (int i = 0; i < 8; i++) {
       final icon = securityIcons[random.nextInt(securityIcons.length)];
@@ -74,7 +75,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       final size = 16.0 + random.nextDouble() * 14.0;
       final startX = random.nextDouble() * screenWidth;
       final startY = random.nextDouble() * screenHeight;
-      
+
       _securityIcons.add(
         FloatingSecurityIcon(
           icon: icon,
@@ -120,12 +121,18 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             Positioned(
               top: -100,
               left: -100,
-              child: _buildDecorativeShape(Colors.white.withOpacity(0.05), 250),
+              child: _buildDecorativeShape(
+                Colors.white.withValues(alpha: 0.05),
+                250,
+              ),
             ),
             Positioned(
               bottom: -120,
               right: -150,
-              child: _buildDecorativeShape(Colors.white.withOpacity(0.08), 400),
+              child: _buildDecorativeShape(
+                Colors.white.withValues(alpha: 0.08),
+                400,
+              ),
             ),
             // Add floating security icons for decoration
             ..._securityIcons,
@@ -178,14 +185,14 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     return Container(
       width: size,
       height: size,
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-      ),
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
     );
   }
 
-  Widget _buildGlassmorphicContainer({required Widget child, double padding = 16.0}) {
+  Widget _buildGlassmorphicContainer({
+    required Widget child,
+    double padding = 16.0,
+  }) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(20.0),
       child: BackdropFilter(
@@ -193,10 +200,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         child: Container(
           padding: EdgeInsets.all(padding),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.15),
+            color: Colors.white.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(20.0),
             border: Border.all(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withValues(alpha: 0.2),
               width: 1.5,
             ),
           ),
@@ -241,10 +248,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         child: Container(
           padding: EdgeInsets.all(16.0),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.2),
+            color: Colors.white.withValues(alpha: 0.2),
             borderRadius: BorderRadius.circular(20.0),
             border: Border.all(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withValues(alpha: 0.2),
               width: 1.5,
             ),
           ),
@@ -252,7 +259,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             children: [
               Row(
                 children: [
-                  const Icon(Icons.notifications_active_rounded, color: Colors.yellowAccent),
+                  const Icon(
+                    Icons.notifications_active_rounded,
+                    color: Colors.yellowAccent,
+                  ),
                   const SizedBox(width: 10),
                   const Flexible(
                     child: Text(
@@ -271,7 +281,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 children: [
                   TextButton(
                     onPressed: _hideNotificationBox,
-                    child: const Text('Để sau', style: TextStyle(color: Colors.white70)),
+                    child: const Text(
+                      'Để sau',
+                      style: TextStyle(color: Colors.white70),
+                    ),
                   ),
                   const SizedBox(width: 8),
                   ElevatedButton(
@@ -299,10 +312,56 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   Widget _buildFunctionalButtonsGrid(BuildContext context) {
     final buttons = [
-      _buildCircularButton(context, Icons.newspaper_rounded, 'Tin mới', Colors.orangeAccent, () => Navigator.push(context, MaterialPageRoute(builder: (context) => const NewsScreen()))),
-      _buildCircularButton(context, Icons.warning_amber_rounded, 'Cảnh báo', Colors.redAccent, () => Navigator.push(context, MaterialPageRoute(builder: (context) => const RiskWarningScreen()))),
-      _buildCircularButton(context, Icons.verified_user_rounded, 'Xác thực', Colors.greenAccent, () => Navigator.push(context, MaterialPageRoute(builder: (context) => const VerificationScreen()))),
-      _buildCircularButton(context, Icons.person_search_rounded, 'Truy nã', Colors.purpleAccent, () => Navigator.push(context, MaterialPageRoute(builder: (context) => const WantedListScreen()))),
+      _buildCircularButton(
+        context,
+        Icons.newspaper_rounded,
+        'Tin mới',
+        Colors.orangeAccent,
+        () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const NewsScreen()),
+        ),
+      ),
+      _buildCircularButton(
+        context,
+        Icons.warning_amber_rounded,
+        'Cảnh báo',
+        Colors.redAccent,
+        () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const RiskWarningScreen()),
+        ),
+      ),
+      _buildCircularButton(
+        context,
+        Icons.verified_user_rounded,
+        'Xác thực',
+        Colors.greenAccent,
+        () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const VerificationScreen()),
+        ),
+      ),
+      _buildCircularButton(
+        context,
+        Icons.person_search_rounded,
+        'Truy nã',
+        Colors.purpleAccent,
+        () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const WantedListScreen()),
+        ),
+      ),
+      _buildCircularButton(
+        context,
+        Icons.check_box,
+        'Check tin giả',
+        Colors.blueAccent,
+        () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const VerifyNews()),
+        ),
+      ),
     ];
 
     return GridView.builder(
@@ -320,7 +379,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
-  Widget _buildCircularButton(BuildContext context, IconData icon, String label, Color color, VoidCallback onTap) {
+  Widget _buildCircularButton(
+    BuildContext context,
+    IconData icon,
+    String label,
+    Color color,
+    VoidCallback onTap,
+  ) {
     return AnimatedButton(
       onTap: onTap,
       child: _buildGlassmorphicContainer(
@@ -345,7 +410,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
-
   Widget _buildContactInfo(BuildContext context) {
     return GestureDetector(
       onTap: () => _launchFacebook(context),
@@ -364,7 +428,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               children: [
                 Text(
                   'Liên hệ hỗ trợ',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
                 SizedBox(height: 4),
                 Text(
@@ -380,9 +448,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   Future<void> _launchFacebook(BuildContext context) async {
-    const facebookUrl = 'https://www.facebook.com/profile.php?id=61577787821766';
+    const facebookUrl =
+        'https://www.facebook.com/profile.php?id=61577787821766';
     if (await canLaunchUrl(Uri.parse(facebookUrl))) {
-      await launchUrl(Uri.parse(facebookUrl), mode: LaunchMode.externalApplication);
+      await launchUrl(
+        Uri.parse(facebookUrl),
+        mode: LaunchMode.externalApplication,
+      );
     } else {
       if (context.mounted) {
         _showFacebookNotInstalledDialog(context);
@@ -396,10 +468,18 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       builder: (context) => BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
         child: AlertDialog(
-          backgroundColor: const Color(0xFF2c3e50).withOpacity(0.85),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('Không thể mở Facebook', style: TextStyle(color: Colors.white)),
-          content: const Text('Vui lòng thử lại sau.', style: TextStyle(color: Colors.white70)),
+          backgroundColor: const Color(0xFF2c3e50).withValues(alpha: 0.85),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text(
+            'Không thể mở Facebook',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: const Text(
+            'Vui lòng thử lại sau.',
+            style: TextStyle(color: Colors.white70),
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -421,9 +501,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Colors.white.withOpacity(0.1),
-                Colors.white.withOpacity(0.2),
-                Colors.white.withOpacity(0.1),
+                Colors.white.withValues(alpha: 0.1),
+                Colors.white.withValues(alpha: 0.2),
+                Colors.white.withValues(alpha: 0.1),
               ],
               stops: const [0.0, 0.5, 1.0],
             ).createShader(rect);
@@ -435,8 +515,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 center: Alignment.center,
                 radius: 1.0,
                 colors: [
-                  Colors.white.withOpacity(0.1),
-                  Colors.white.withOpacity(0.05),
+                  Colors.white.withValues(alpha: 0.1),
+                  Colors.white.withValues(alpha: 0.05),
                 ],
                 stops: const [0.0, 1.0],
               ),
@@ -447,7 +527,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 }
-
 
 // Custom Animated Button for a bit of flair
 class AnimatedButton extends StatefulWidget {
@@ -460,7 +539,8 @@ class AnimatedButton extends StatefulWidget {
   _AnimatedButtonState createState() => _AnimatedButtonState();
 }
 
-class _AnimatedButtonState extends State<AnimatedButton> with SingleTickerProviderStateMixin {
+class _AnimatedButtonState extends State<AnimatedButton>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
 
@@ -472,9 +552,10 @@ class _AnimatedButtonState extends State<AnimatedButton> with SingleTickerProvid
       duration: const Duration(milliseconds: 200),
       reverseDuration: const Duration(milliseconds: 100),
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.95,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
   }
 
   @override
@@ -498,10 +579,7 @@ class _AnimatedButtonState extends State<AnimatedButton> with SingleTickerProvid
       onTapUp: _onTapUp,
       onTapCancel: () => _controller.reverse(),
       onTap: widget.onTap,
-      child: ScaleTransition(
-        scale: _scaleAnimation,
-        child: widget.child,
-      ),
+      child: ScaleTransition(scale: _scaleAnimation, child: widget.child),
     );
   }
 }
@@ -527,7 +605,8 @@ class FloatingSecurityIcon extends StatefulWidget {
   _FloatingSecurityIconState createState() => _FloatingSecurityIconState();
 }
 
-class _FloatingSecurityIconState extends State<FloatingSecurityIcon> with SingleTickerProviderStateMixin {
+class _FloatingSecurityIconState extends State<FloatingSecurityIcon>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _xAnimation;
   late Animation<double> _yAnimation;
@@ -545,66 +624,52 @@ class _FloatingSecurityIconState extends State<FloatingSecurityIcon> with Single
     // Random movement path
     final endX = widget.startX + (math.Random().nextDouble() - 0.5) * 200;
     final endY = widget.startY + (math.Random().nextDouble() - 0.5) * 200;
-    
+
     _xAnimation = Tween<double>(
       begin: widget.startX,
       end: endX,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeInOut,
-    ));
-    
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+
     _yAnimation = Tween<double>(
       begin: widget.startY,
       end: endY,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeInOut,
-    ));
-    
-    _opacityAnimation = Tween<double>(
-      begin: 0.0,
-      end: 0.7,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: const Interval(0.0, 0.3, curve: Curves.easeIn),
-    ));
-    
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+
+    _opacityAnimation = Tween<double>(begin: 0.0, end: 0.7).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.0, 0.3, curve: Curves.easeIn),
+      ),
+    );
+
     _scaleAnimation = Tween<double>(
       begin: 0.5,
       end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOut,
-    ));
-    
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+
     _controller.forward();
-    
+
     // Loop the animation
     _controller.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
         _controller.reset();
-        
+
         // Change destination for next animation
-        final newEndX = widget.startX + (math.Random().nextDouble() - 0.5) * 200;
-        final newEndY = widget.startY + (math.Random().nextDouble() - 0.5) * 200;
-        
-        _xAnimation = Tween<double>(
-          begin: _xAnimation.value,
-          end: newEndX,
-        ).animate(CurvedAnimation(
-          parent: _controller,
-          curve: Curves.easeInOut,
-        ));
-        
-        _yAnimation = Tween<double>(
-          begin: _yAnimation.value,
-          end: newEndY,
-        ).animate(CurvedAnimation(
-          parent: _controller,
-          curve: Curves.easeInOut,
-        ));
-        
+        final newEndX =
+            widget.startX + (math.Random().nextDouble() - 0.5) * 200;
+        final newEndY =
+            widget.startY + (math.Random().nextDouble() - 0.5) * 200;
+
+        _xAnimation = Tween<double>(begin: _xAnimation.value, end: newEndX)
+            .animate(
+              CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+            );
+
+        _yAnimation = Tween<double>(begin: _yAnimation.value, end: newEndY)
+            .animate(
+              CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+            );
+
         _controller.forward();
       }
     });
@@ -633,7 +698,7 @@ class _FloatingSecurityIconState extends State<FloatingSecurityIcon> with Single
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: widget.color.withOpacity(0.3),
+                      color: widget.color.withValues(alpha: 0.3),
                       blurRadius: 10,
                       spreadRadius: 2,
                     ),

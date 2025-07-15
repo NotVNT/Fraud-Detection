@@ -7,9 +7,9 @@ import '../models/news_item.dart';
 
 class ArticleDetailScreen extends StatefulWidget {
   final NewsItem newsItem;
-  
+
   const ArticleDetailScreen({required this.newsItem, super.key});
-  
+
   @override
   State<ArticleDetailScreen> createState() => _ArticleDetailScreenState();
 }
@@ -20,22 +20,24 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   bool _hasError = false;
   String _errorMessage = '';
   Map<String, dynamic> _articleContent = {};
-  
+
   @override
   void initState() {
     super.initState();
     _loadArticleContent();
   }
-  
+
   Future<void> _loadArticleContent() async {
     try {
       setState(() {
         _isLoading = true;
         _hasError = false;
       });
-      
-      final content = await _newsService.fetchArticleContent(widget.newsItem.articleUrl);
-      
+
+      final content = await _newsService.fetchArticleContent(
+        widget.newsItem.articleUrl,
+      );
+
       setState(() {
         _articleContent = content;
         _isLoading = false;
@@ -48,7 +50,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
       });
     }
   }
-  
+
   Future<void> _openOriginalArticle() async {
     final Uri uri = Uri.parse(widget.newsItem.articleUrl);
     if (await canLaunchUrl(uri)) {
@@ -62,7 +64,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
       );
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -73,7 +75,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
           widget.newsItem.source,
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
-        backgroundColor: Colors.white.withOpacity(0.1),
+        backgroundColor: Colors.white.withValues(alpha: 0.1),
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
@@ -103,16 +105,16 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
           ),
         ),
         child: SafeArea(
-          child: _isLoading 
-            ? _buildLoadingState()
-            : _hasError 
+          child: _isLoading
+              ? _buildLoadingState()
+              : _hasError
               ? _buildErrorState(_errorMessage)
               : _buildArticleContent(),
         ),
       ),
     );
   }
-  
+
   Widget _buildLoadingState() {
     return const Center(
       child: Column(
@@ -120,12 +122,15 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
         children: [
           CircularProgressIndicator(color: Colors.white),
           SizedBox(height: 20),
-          Text('Đang tải nội dung bài viết...', style: TextStyle(color: Colors.white70, fontSize: 16)),
+          Text(
+            'Đang tải nội dung bài viết...',
+            style: TextStyle(color: Colors.white70, fontSize: 16),
+          ),
         ],
       ),
     );
   }
-  
+
   Widget _buildErrorState(String error) {
     return Center(
       child: Padding(
@@ -137,7 +142,11 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
             const SizedBox(height: 20),
             const Text(
               'Không thể tải bài viết',
-              style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 10),
             Text(
@@ -175,7 +184,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
       ),
     );
   }
-  
+
   Widget _buildArticleContent() {
     // If no content loaded yet
     if (_articleContent.isEmpty) {
@@ -183,25 +192,35 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.article_outlined, color: Colors.white.withOpacity(0.6), size: 60),
+            Icon(
+              Icons.article_outlined,
+              color: Colors.white.withValues(alpha: 0.6),
+              size: 60,
+            ),
             const SizedBox(height: 16),
             const Text(
               'Không có nội dung',
-              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
               textAlign: TextAlign.center,
             ),
           ],
         ),
       );
     }
-    
+
     final title = _articleContent['title'] ?? widget.newsItem.title;
     final description = _articleContent['description'] ?? '';
-    final List<Map<String, dynamic>> content = 
-        List<Map<String, dynamic>>.from(_articleContent['content'] ?? []);
+    final List<Map<String, dynamic>> content = List<Map<String, dynamic>>.from(
+      _articleContent['content'] ?? [],
+    );
     final author = _articleContent['author'] ?? '';
-    final publishTime = _articleContent['publishTime'] ?? widget.newsItem.timeAgo;
-    
+    final publishTime =
+        _articleContent['publishTime'] ?? widget.newsItem.timeAgo;
+
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 40),
@@ -227,18 +246,25 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                 errorWidget: (context, url, error) => Container(
                   height: 200,
                   color: Colors.indigo.shade800,
-                  child: const Icon(Icons.broken_image, color: Colors.white70, size: 40),
+                  child: const Icon(
+                    Icons.broken_image,
+                    color: Colors.white70,
+                    size: 40,
+                  ),
                 ),
               ),
             ),
-            
+
           // Category and time
           Padding(
             padding: const EdgeInsets.only(top: 16),
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.redAccent,
                     borderRadius: BorderRadius.circular(8),
@@ -263,7 +289,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
               ],
             ),
           ),
-          
+
           // Title
           Padding(
             padding: const EdgeInsets.only(top: 16),
@@ -277,7 +303,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
               ),
             ),
           ),
-          
+
           // Description
           if (description.isNotEmpty)
             Padding(
@@ -293,16 +319,16 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                 ),
               ),
             ),
-            
+
           // Divider
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 16),
             child: Container(
               height: 1,
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withValues(alpha: 0.1),
             ),
           ),
-          
+
           // Content blocks
           ...content.map((block) {
             if (block['type'] == 'paragraph') {
@@ -333,13 +359,19 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                           height: 200,
                           color: Colors.indigo.shade800,
                           child: const Center(
-                            child: CircularProgressIndicator(color: Colors.white),
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                         errorWidget: (context, url, error) => Container(
                           height: 200,
                           color: Colors.indigo.shade800,
-                          child: const Icon(Icons.broken_image, color: Colors.white70, size: 40),
+                          child: const Icon(
+                            Icons.broken_image,
+                            color: Colors.white70,
+                            size: 40,
+                          ),
                         ),
                       ),
                     ),
@@ -362,7 +394,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
             }
             return const SizedBox();
           }).toList(),
-          
+
           // Author
           if (author.isNotEmpty)
             Padding(
@@ -383,14 +415,14 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                 ],
               ),
             ),
-            
+
           // Source link
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             margin: const EdgeInsets.only(top: 24),
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.3),
+              color: Colors.black.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
@@ -419,4 +451,4 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
       ),
     );
   }
-} 
+}
