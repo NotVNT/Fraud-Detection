@@ -17,7 +17,7 @@ def index():
                 image = Image.open(image_file.stream).convert('L')
                 extracted_text = pytesseract.image_to_string(image, lang="vie")
                 result = check_fake_news_with_search(extracted_text)
-    return render_template("index.html", result=result)
+    return result
 
 if __name__ == "__main__":
     app.run(debug=True)

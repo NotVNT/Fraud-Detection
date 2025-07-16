@@ -33,11 +33,11 @@ def check_fake_news_with_search(new_text):
 
     {search_info_for_gemini}
 
-    **Nếu thông tin được mà bạn nhận được liên quan tới tin tức thì đánh giá của bạn về tin tức gốc (là thật hay giả) và lý do chi tiết(chỉ dài khoảng 200 từ), dựa trên cả tin tức gốc và các thông tin tìm kiếm được:**
+    **Nếu thông tin được mà bạn nhận được liên quan tới tin tức thì đánh giá của bạn về tin tức gốc (là thật hay giả) và lý do chi tiết(chỉ dài khoảng 150 từ), dựa trên cả tin tức gốc và các thông tin tìm kiếm được:**
     Đánh giá: Đây là thông tin [Thật/Giả/Không có bằng chứng cụ thể để xác thực thông tin này - (Giải thích ngắn gọn)]
     Lý do chi tiết:
 
-    **Nếu thông tin được mà bạn nhận được liên quan tới ý kiến cá nhân thì đánh giá của bạn về ý kiến cá nhân (là tích cực hay tiêu cực) và lý do chi tiết tại sao tin này có thể gây hiểu lầm nếu là tiêu cực và tại sao tin này có thể mang lại thông tin hay nếu là tích cực(chỉ dài khoảng 200 từ), dựa trên cả tin tức gốc và các thông tin tìm kiếm được:**
+    **Nếu thông tin được mà bạn nhận được liên quan tới ý kiến cá nhân thì đánh giá của bạn về ý kiến cá nhân (là tích cực hay tiêu cực) và lý do chi tiết tại sao tin này có thể gây hiểu lầm nếu là tiêu cực và tại sao tin này có thể mang lại thông tin hay nếu là tích cực(chỉ dài khoảng 150 từ), dựa trên cả tin tức gốc và các thông tin tìm kiếm được:**
     Đánh giá: Đây là ý kiến cá nhân mang tính [Tích cực/Tiêu cực/Không có bằng chứng cụ thể để xác thực thông tin này - (Giải thích ngắn gọn)]
     Lý do chi tiết:
 
