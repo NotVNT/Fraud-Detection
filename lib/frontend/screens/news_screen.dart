@@ -1,12 +1,9 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 // import 'package:url_launcher/url_launcher.dart'; flag = 0
 import '../models/news_item.dart';
 import '../../backend/services/news_service.dart';
-import 'package:intl/intl.dart';
 import 'article_detail_screen.dart';
-import 'dart:math';
 
 class NewsScreen extends StatefulWidget {
   const NewsScreen({super.key});
@@ -18,8 +15,7 @@ class NewsScreen extends StatefulWidget {
 class _NewsScreenState extends State<NewsScreen>
     with SingleTickerProviderStateMixin {
   final NewsService _newsService = NewsService();
-  List<NewsItem> _newsItems = [];
-  List<NewsItem> _filteredNewsItems = [];
+  List<NewsItem> _newsItems = []; // Store currently loaded news
   late AnimationController _animationController;
   bool _isLoading = true;
   bool _isLoadingMore = false;
@@ -29,7 +25,7 @@ class _NewsScreenState extends State<NewsScreen>
   bool _hasMoreData = true;
   final ScrollController _scrollController = ScrollController();
   String _selectedCategory = '';
-  String _dateFilter = 'all'; // 'all', 'today', 'week', 'month'
+  static const int _itemsPerPage = 10; // Load 10 items at a time
 
   // Get the list of available categories
   List<String> get _categories => _newsService.getCategories();
@@ -43,32 +39,13 @@ class _NewsScreenState extends State<NewsScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1000),
     );
-
-    // Add scroll listener for pagination
-    _scrollController.addListener(_scrollListener);
-
-    // Initialize filtered items
-    _filteredNewsItems = [];
-
-    // Reset filter if it's set to 'month' (removed option)
-    if (_dateFilter == 'month') {
-      _dateFilter = 'all';
-    }
+    // Removed scroll listener - using manual "Load More" button instead
   }
 
-  void _scrollListener() {
-    if (_scrollController.position.pixels >=
-            _scrollController.position.maxScrollExtent * 0.8 &&
-        !_isLoading &&
-        !_isLoadingMore &&
-        _hasMoreData) {
-      _loadMoreNews();
-    }
-  }
+  // Removed scroll listener - using manual "Load More" button instead
 
   @override
   void dispose() {
-    _scrollController.removeListener(_scrollListener);
     _scrollController.dispose();
     _animationController.dispose();
     super.dispose();
@@ -85,14 +62,14 @@ class _NewsScreenState extends State<NewsScreen>
       final news = await _newsService.fetchZNewsArticles(
         page: _currentPage,
         category: _selectedCategory,
+        limit: _itemsPerPage,
       );
 
       setState(() {
         _newsItems = news;
-        _debugPrintArticleDates(); // Debug dates
-        _applyFilters();
         _isLoading = false;
-        _hasMoreData = news.isNotEmpty;
+        // Check if we got fewer items than expected (end of data)
+        _hasMoreData = news.length >= _itemsPerPage;
         _animationController.forward(from: 0.0);
       });
     } catch (e) {
@@ -104,125 +81,8 @@ class _NewsScreenState extends State<NewsScreen>
     }
   }
 
-  // For debugging dates
-  void _debugPrintArticleDates() {
-    if (_newsItems.isEmpty) {
-      print('No articles to debug');
-      return;
-    }
-
-    print('===== DEBUG DATES =====');
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final weekAgo = today.subtract(const Duration(days: 6));
-    final monthAgo = today.subtract(const Duration(days: 29));
-
-    int todayCount = 0;
-    int weekCount = 0;
-    int monthCount = 0;
-
-    for (var item in _newsItems) {
-      final itemDate = DateTime(
-        item.publishDate.year,
-        item.publishDate.month,
-        item.publishDate.day,
-      );
-
-      if (itemDate.isAtSameMomentAs(today)) {
-        todayCount++;
-      }
-
-      if (!itemDate.isBefore(weekAgo)) {
-        weekCount++;
-      }
-
-      if (!itemDate.isBefore(monthAgo)) {
-        monthCount++;
-      }
-    }
-
-    print('Today count: $todayCount articles');
-    print('Week count: $weekCount articles');
-    print('Month count: $monthCount articles');
-    print('Total articles: ${_newsItems.length}');
-    print('=======================');
-  }
-
-  void _applyFilters() {
-    List<NewsItem> filtered = List.from(_newsItems);
-
-    // Apply date filter
-    if (_dateFilter != 'all') {
-      final now = DateTime.now();
-      final today = DateTime(now.year, now.month, now.day);
-
-      filtered = filtered.where((item) {
-        // Skip items with invalid publish date flag = 1
-        // if (item.publishDate == null) {
-        //   return false;
-        // }
-
-        // Normalize the date by removing time components for comparison
-        final publishDate = item.publishDate;
-        final itemDate = DateTime(
-          publishDate.year,
-          publishDate.month,
-          publishDate.day,
-        );
-
-        switch (_dateFilter) {
-          case 'today':
-            // Compare normalized dates for exact day match
-            return itemDate.year == today.year &&
-                itemDate.month == today.month &&
-                itemDate.day == today.day;
-
-          case 'week':
-            // 7 days including today
-            final weekAgo = today.subtract(const Duration(days: 6));
-            // Item date should be >= weekAgo and <= today
-            return (itemDate.isAtSameMomentAs(weekAgo) ||
-                    itemDate.isAfter(weekAgo)) &&
-                (itemDate.isAtSameMomentAs(today) || itemDate.isBefore(today));
-
-          case 'month':
-            // 30 days including today
-            final monthAgo = today.subtract(const Duration(days: 29));
-            // Item date should be >= monthAgo and <= today
-            return (itemDate.isAtSameMomentAs(monthAgo) ||
-                    itemDate.isAfter(monthAgo)) &&
-                (itemDate.isAtSameMomentAs(today) || itemDate.isBefore(today));
-
-          default:
-            return true;
-        }
-      }).toList();
-    }
-
-    // Debug the filter results
-    if (_dateFilter != 'all') {
-      print('Date filter applied: $_dateFilter');
-      print('Before filtering: ${_newsItems.length} items');
-      print('After filtering: ${filtered.length} items');
-
-      if (filtered.isEmpty && _newsItems.isNotEmpty) {
-        // Debug dates to see if there's a parsing issue
-        print('Sample item dates:');
-        for (var i = 0; i < min(5, _newsItems.length); i++) {
-          print(
-            'Item $i: ${_newsItems[i].publishDate} (${_newsItems[i].timeAgo})',
-          );
-        }
-      }
-    }
-
-    setState(() {
-      _filteredNewsItems = filtered;
-    });
-  }
-
   Future<void> _loadMoreNews() async {
-    if (_isLoadingMore) return;
+    if (_isLoadingMore || !_hasMoreData) return;
 
     setState(() {
       _isLoadingMore = true;
@@ -233,16 +93,13 @@ class _NewsScreenState extends State<NewsScreen>
       final moreNews = await _newsService.fetchZNewsArticles(
         page: _currentPage,
         category: _selectedCategory,
+        limit: _itemsPerPage,
       );
 
       setState(() {
-        if (moreNews.isNotEmpty) {
-          _newsItems.addAll(moreNews);
-          _applyFilters();
-          _hasMoreData = moreNews.length >= 5; // Assuming 5 is the page size
-        } else {
-          _hasMoreData = false;
-        }
+        _newsItems.addAll(moreNews);
+        // Check if we got fewer items than expected (end of data)
+        _hasMoreData = moreNews.length >= _itemsPerPage;
         _isLoadingMore = false;
       });
     } catch (e) {
@@ -264,6 +121,7 @@ class _NewsScreenState extends State<NewsScreen>
 
   Future<void> _refreshNews() async {
     _currentPage = 1;
+    _newsItems.clear();
     await _loadNews();
   }
 
@@ -272,20 +130,16 @@ class _NewsScreenState extends State<NewsScreen>
       setState(() {
         _selectedCategory = category;
         _currentPage = 1;
+        _newsItems.clear();
       });
       _refreshNews();
     }
   }
 
-  void _changeDateFilter(String filter) {
-    // Ignore if trying to set filter to 'month' (removed option)
-    if (filter == 'month') return;
-
-    if (_dateFilter != filter) {
-      setState(() {
-        _dateFilter = filter;
-      });
-      _applyFilters();
+  // Manual load more method
+  void _loadMoreManually() {
+    if (!_isLoadingMore && _hasMoreData) {
+      _loadMoreNews();
     }
   }
 
@@ -358,9 +212,6 @@ class _NewsScreenState extends State<NewsScreen>
         // Category tabs
         _buildCategoryTabs(),
 
-        // Date filter
-        _buildDateFilter(),
-
         // News list
         Expanded(
           child: RefreshIndicator(
@@ -385,35 +236,23 @@ class _NewsScreenState extends State<NewsScreen>
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      Flexible(
-                        child: Text(
-                          '${_filteredNewsItems.length} bài viết',
-                          style: const TextStyle(color: Colors.white70),
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.end,
-                        ),
-                      ),
                     ],
                   ),
                 ),
                 // News list
                 Expanded(
-                  child: _filteredNewsItems.isEmpty
-                      ? _dateFilter != 'all'
-                            ? _buildNoFilterMatchState()
-                            : _newsItems.isEmpty
-                            ? _buildEmptyState()
-                            : _buildNoFilterMatchState()
+                  child: _newsItems.isEmpty
+                      ? _buildEmptyState()
                       : ListView.builder(
                           controller: _scrollController,
                           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                           itemCount:
-                              _filteredNewsItems.length +
-                              (_isLoadingMore || _hasMoreData ? 1 : 0),
+                              _newsItems.length +
+                              (_hasMoreData || _isLoadingMore ? 1 : 0),
                           itemBuilder: (context, index) {
-                            if (index < _filteredNewsItems.length) {
+                            if (index < _newsItems.length) {
                               return _buildAnimatedNewsCard(
-                                _filteredNewsItems[index],
+                                _newsItems[index],
                                 index,
                               );
                             } else {
@@ -485,332 +324,87 @@ class _NewsScreenState extends State<NewsScreen>
     );
   }
 
-  Widget _buildDateFilter() {
-    return Container(
-      height: 40,
-      color: Colors.black.withValues(alpha: 0.1),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            const Text('Lọc theo: ', style: TextStyle(color: Colors.white70)),
-            const SizedBox(width: 8),
-            _buildDateFilterChip('all', 'Tất cả'),
-            const SizedBox(width: 8),
-            _buildDateFilterChip('today', 'Hôm nay'),
-            const SizedBox(width: 8),
-            _buildDateFilterChip('week', '7 ngày'),
-            if (_dateFilter != 'all') ...[
-              const SizedBox(width: 16),
-              // Hiển thị khoảng thời gian đang lọc
-              _buildDateRangeText(),
-            ],
-            // Debug button
-            const SizedBox(width: 8),
-            IconButton(
-              icon: const Icon(
-                Icons.bug_report,
-                color: Colors.white70,
-                size: 16,
-              ),
-              onPressed: () => _showDateDebugInfo(),
-              tooltip: 'Debug dates',
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Add this new method to show date debugging information
-  void _showDateDebugInfo() {
-    if (_newsItems.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('No news items to debug')));
-      return;
-    }
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1a237e),
-        title: const Text(
-          'Date Debug Info',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Filter: $_dateFilter',
-                style: const TextStyle(color: Colors.white),
-              ),
-              Text(
-                'Total items: ${_newsItems.length}',
-                style: const TextStyle(color: Colors.white),
-              ),
-              Text(
-                'Filtered items: ${_filteredNewsItems.length}',
-                style: const TextStyle(color: Colors.white),
-              ),
-              const Divider(color: Colors.white30),
-              const Text(
-                'Sample Items:',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              ...List.generate(min(5, _newsItems.length), (index) {
-                final item = _newsItems[index];
-                // Check if this item passes the current filter
-                bool passesFilter = false;
-                if (_dateFilter == 'all') {
-                  passesFilter = true;
-                } else {
-                  final now = DateTime.now();
-                  final today = DateTime(now.year, now.month, now.day);
-                  final itemDate = DateTime(
-                    item.publishDate.year,
-                    item.publishDate.month,
-                    item.publishDate.day,
-                  );
-
-                  if (_dateFilter == 'today') {
-                    passesFilter =
-                        itemDate.year == today.year &&
-                        itemDate.month == today.month &&
-                        itemDate.day == today.day;
-                  } else if (_dateFilter == 'week') {
-                    final weekAgo = today.subtract(const Duration(days: 6));
-                    passesFilter =
-                        !itemDate.isBefore(weekAgo) && !itemDate.isAfter(today);
-                  } else if (_dateFilter == 'month') {
-                    final monthAgo = today.subtract(const Duration(days: 29));
-                    passesFilter =
-                        !itemDate.isBefore(monthAgo) &&
-                        !itemDate.isAfter(today);
-                  }
-                }
-
-                // Color code based on filter pass/fail
-                final textColor = passesFilter ? Colors.green : Colors.red;
-
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Item $index: ${item.title.substring(0, min(30, item.title.length))}...',
-                        style: const TextStyle(color: Colors.white70),
-                      ),
-                      Text(
-                        'Date: ${item.publishDate.toString()}',
-                        style: TextStyle(color: textColor),
-                      ),
-                      Text(
-                        'Raw: ${item.timeAgo}',
-                        style: const TextStyle(color: Colors.white70),
-                      ),
-                      const Divider(color: Colors.white30),
-                    ],
-                  ),
-                );
-              }),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close', style: TextStyle(color: Colors.white)),
-          ),
-          TextButton(
-            onPressed: () {
-              // Force refresh the filters
-              _applyFilters();
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Filters reapplied')),
-              );
-            },
-            child: const Text(
-              'Refresh Filters',
-              style: TextStyle(color: Colors.lightBlueAccent),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDateFilterChip(String filter, String label) {
-    final isSelected = _dateFilter == filter;
-
-    return GestureDetector(
-      onTap: () => _changeDateFilter(filter),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: isSelected ? Colors.white : Colors.white30),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.indigo.shade900 : Colors.white,
-            fontSize: 12,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDateRangeText() {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    String dateText = '';
-    IconData icon = Icons.calendar_today_outlined;
-
-    switch (_dateFilter) {
-      case 'today':
-        final dateFormat = DateFormat('dd/MM/yyyy');
-        dateText = dateFormat.format(today);
-        icon = Icons.today;
-        break;
-      case 'week':
-        final weekAgo = today.subtract(const Duration(days: 6));
-        final dateFormat = DateFormat('dd/MM');
-        dateText =
-            '${dateFormat.format(weekAgo)} - ${dateFormat.format(today)}';
-        icon = Icons.date_range;
-        break;
-      case 'month':
-        final monthAgo = today.subtract(const Duration(days: 29));
-        final dateFormat = DateFormat('dd/MM');
-        dateText =
-            '${dateFormat.format(monthAgo)} - ${dateFormat.format(today)}';
-        icon = Icons.date_range;
-        break;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.indigo.shade900.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white24),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: Colors.white70),
-          const SizedBox(width: 4),
-          Text(
-            dateText,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNoFilterMatchState() {
-    String filterText = '';
-    switch (_dateFilter) {
-      case 'today':
-        filterText = 'hôm nay';
-        break;
-      case 'week':
-        filterText = '7 ngày qua';
-        break;
-      case 'month':
-        filterText = '30 ngày qua';
-        break;
-      default:
-        filterText = '';
-    }
-
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.filter_list,
-            color: Colors.white.withValues(alpha: 0.6),
-            size: 60,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Không có bài viết nào ${filterText.isNotEmpty ? 'trong $filterText' : 'phù hợp'}',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Thử thay đổi bộ lọc hoặc danh mục để xem nhiều bài viết hơn',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white70),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              TextButton.icon(
-                onPressed: () => _changeDateFilter('all'),
-                icon: const Icon(Icons.refresh, color: Colors.white),
-                label: const Text(
-                  'Xóa bộ lọc thời gian',
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-              if (_selectedCategory.isNotEmpty)
-                TextButton.icon(
-                  onPressed: () => _changeCategory(''),
-                  icon: const Icon(
-                    Icons.category_outlined,
-                    color: Colors.white,
-                  ),
-                  label: const Text(
-                    'Xem tất cả danh mục',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildLoadMoreIndicator() {
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Center(
         child: _isLoadingMore
-            ? const CircularProgressIndicator(color: Colors.white)
-            : TextButton(
-                onPressed: _hasMoreData ? _loadMoreNews : null,
-                child: Text(
-                  _hasMoreData ? 'Tải thêm tin tức' : 'Đã tải hết tin',
-                  style: const TextStyle(color: Colors.white70),
+            ? Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    width: 1,
+                  ),
+                ),
+                child: const Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(color: Colors.white),
+                    SizedBox(height: 12),
+                    Text(
+                      'Đang tải thêm tin tức...',
+                      style: TextStyle(color: Colors.white70, fontSize: 14),
+                    ),
+                  ],
+                ),
+              )
+            : _hasMoreData
+            ? Container(
+                width: double.infinity,
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                child: ElevatedButton.icon(
+                  onPressed: _loadMoreManually,
+                  icon: const Icon(Icons.expand_more, size: 20),
+                  label: const Text(
+                    'Tải thêm tin tức',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white.withValues(alpha: 0.15),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.3),
+                        width: 1,
+                      ),
+                    ),
+                    elevation: 0,
+                  ),
+                ),
+              )
+            : Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    width: 1,
+                  ),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.check_circle_outline,
+                      color: Colors.white60,
+                      size: 20,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      'Đã tải hết tin tức',
+                      style: TextStyle(
+                        color: Colors.white60,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
                 ),
               ),
       ),
@@ -857,243 +451,165 @@ class _NewsScreenState extends State<NewsScreen>
     return GestureDetector(
       onTap: () => _openArticle(news.articleUrl),
       child: Container(
-        height: 220,
-        margin: const EdgeInsets.only(bottom: 20),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: Stack(
-            fit: StackFit.expand,
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withValues(alpha: 0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+          border: Border.all(
+            color: Colors.grey.withValues(alpha: 0.1),
+            width: 1,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Background Image with error handling
-              _buildNewsImage(news.imageUrl),
-              // Gradient Overlay
-              Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      Colors.black.withValues(alpha: 0.2),
-                      Colors.black.withValues(alpha: 0.8),
-                    ],
-                    stops: const [0.4, 0.6, 1.0],
+              // Header với thời gian và category
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: Colors.orange.shade200,
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      news.category,
+                      style: TextStyle(
+                        color: Colors.orange.shade700,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
                   ),
-                ),
-              ),
-              // Content
-              Positioned(
-                bottom: 16,
-                left: 16,
-                right: 16,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Row(
                       children: [
+                        Icon(
+                          Icons.access_time,
+                          size: 14,
+                          color: Colors.grey.shade500,
+                        ),
+                        const SizedBox(width: 4),
                         Flexible(
                           child: Text(
                             news.timeAgo,
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 13,
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
                             ),
                             overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.black45,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            news.category,
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 11,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
-                    Text(
-                      news.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        height: 1.3,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // Title
+              Text(
+                news.title,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.blueGrey.shade800,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  height: 1.4,
+                  letterSpacing: -0.2,
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Footer với tags và read more indicator
+              Row(
+                children: [
+                  if (news.tags.isNotEmpty && news.tags.length > 1) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.blueGrey.shade50,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.local_offer,
+                            size: 10,
+                            color: Colors.blueGrey.shade500,
+                          ),
+                          const SizedBox(width: 2),
+                          Text(
+                            '${news.tags.length} thẻ',
+                            style: TextStyle(
+                              color: Colors.blueGrey.shade600,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    if (news.tags.isNotEmpty && news.tags.length > 1)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 6),
-                        child: Row(
-                          children: [
-                            Icon(Icons.tag, size: 12, color: Colors.white60),
-                            const SizedBox(width: 4),
-                            Text(
-                              '${news.tags.length} thẻ',
-                              style: TextStyle(
-                                color: Colors.white60,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
                   ],
-                ),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.blueGrey.shade700,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Đọc thêm',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.arrow_forward_ios,
+                          size: 10,
+                          color: Colors.white,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildNewsImage(String imageUrl) {
-    // Kiểm tra nếu không có hình ảnh
-    if (imageUrl == 'no_image') {
-      return Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.indigo.shade900,
-              Colors.indigo.shade800,
-              Colors.indigo.shade700,
-            ],
-          ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.image_not_supported, color: Colors.white70, size: 40),
-            const SizedBox(height: 8),
-            const Text(
-              'Không có hình ảnh',
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // Skip processing base64 or data URLs
-    if (imageUrl.contains('data:image') || imageUrl.contains('base64')) {
-      return Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topRight,
-            end: Alignment.bottomLeft,
-            colors: [
-              Colors.indigo.shade800,
-              Colors.indigo.shade900,
-              Colors.deepPurple.shade900,
-            ],
-          ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.broken_image, color: Colors.white70, size: 40),
-            const SizedBox(height: 8),
-            const Text(
-              'Hình ảnh không hỗ trợ',
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return CachedNetworkImage(
-      imageUrl: imageUrl,
-      fit: BoxFit.cover,
-      placeholder: (context, url) => Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.indigo.shade900.withValues(alpha: 0.5),
-              Colors.indigo.shade800.withValues(alpha: 0.3),
-              Colors.indigo.shade700.withValues(alpha: 0.5),
-            ],
-          ),
-        ),
-        child: const Center(
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.white60),
-            strokeWidth: 2,
-          ),
-        ),
-      ),
-      errorWidget: (context, url, error) {
-        // print('Error loading image: $url - $error');
-        return Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Colors.indigo.shade800,
-                Colors.indigo.shade900,
-                Colors.deepPurple.shade900,
-              ],
-            ),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error_outline, color: Colors.white70, size: 40),
-              const SizedBox(height: 8),
-              const Text(
-                'Không tải được hình ảnh',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-      // Fix for HTTP 403 errors - add headers
-      httpHeaders: const {
-        'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Referer': 'https://znews.vn/',
-      },
-      // Increase memory cache size
-      cacheKey: 'news_${imageUrl.hashCode}',
-      memCacheHeight: 500,
-      memCacheWidth: 1000,
-      maxHeightDiskCache: 500,
-      maxWidthDiskCache: 1000,
     );
   }
 

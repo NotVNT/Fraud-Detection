@@ -9,6 +9,7 @@ import 'risk_warning_screen.dart';
 import 'verification_screen.dart';
 import 'wanted_list_screen.dart';
 import 'verify_news.dart';
+import 'missing_persons_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -141,26 +142,27 @@ class _HomeScreenState extends State<HomeScreen>
             SafeArea(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 20),
-                    FadeTransition(
-                      opacity: _fadeAnimation,
-                      child: _buildBanner(),
-                    ),
-                    const SizedBox(height: 24),
-                    Expanded(
-                      child: FadeTransition(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 20),
+                      FadeTransition(
+                        opacity: _fadeAnimation,
+                        child: _buildBanner(),
+                      ),
+                      const SizedBox(height: 24),
+                      FadeTransition(
                         opacity: _fadeAnimation,
                         child: _buildFunctionalButtonsGrid(context),
                       ),
-                    ),
-                    FadeTransition(
-                      opacity: _fadeAnimation,
-                      child: _buildContactInfo(context),
-                    ),
-                    const SizedBox(height: 20),
-                  ],
+                      const SizedBox(height: 24),
+                      FadeTransition(
+                        opacity: _fadeAnimation,
+                        child: _buildContactInfo(context),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -189,32 +191,30 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildGlassmorphicContainer({
-    required Widget child,
-    double padding = 16.0,
-  }) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20.0),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
-        child: Container(
-          padding: EdgeInsets.all(padding),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(20.0),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.2),
-              width: 1.5,
-            ),
-          ),
-          child: child,
+  Widget _buildMobileContainer({required Widget child, double padding = 16.0}) {
+    return Container(
+      padding: EdgeInsets.all(padding),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16.0),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.3),
+          width: 1.0,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
+      child: child,
     );
   }
 
   Widget _buildBanner() {
-    return _buildGlassmorphicContainer(
+    return _buildMobileContainer(
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -226,7 +226,7 @@ class _HomeScreenState extends State<HomeScreen>
           const SizedBox(width: 15),
           Flexible(
             child: Text(
-              'PHÒNG CHỐNG LỪA ĐẢO',
+              'Fraud Detection',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -241,71 +241,56 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildNotificationPermissionBox() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20.0),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
-        child: Container(
-          padding: EdgeInsets.all(16.0),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(20.0),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.2),
-              width: 1.5,
-            ),
-          ),
-          child: Column(
+    return _buildMobileContainer(
+      child: Column(
+        children: [
+          Row(
             children: [
-              Row(
-                children: [
-                  const Icon(
-                    Icons.notifications_active_rounded,
-                    color: Colors.yellowAccent,
-                  ),
-                  const SizedBox(width: 10),
-                  const Flexible(
-                    child: Text(
-                      'Bật thông báo để nhận cảnh báo mới nhất',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
+              const Icon(
+                Icons.notifications_active_rounded,
+                color: Colors.yellowAccent,
               ),
-              const SizedBox(height: 10),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: _hideNotificationBox,
-                    child: const Text(
-                      'Để sau',
-                      style: TextStyle(color: Colors.white70),
-                    ),
+              const SizedBox(width: 10),
+              const Flexible(
+                child: Text(
+                  'Bật thông báo để nhận cảnh báo mới nhất',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
                   ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: () {
-                      // Handle permission request
-                      _hideNotificationBox();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.cyanAccent,
-                      foregroundColor: Colors.black,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text('Cho phép'),
-                  ),
-                ],
+                ),
               ),
             ],
           ),
-        ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: _hideNotificationBox,
+                child: const Text(
+                  'Để sau',
+                  style: TextStyle(color: Colors.white70),
+                ),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton(
+                onPressed: () {
+                  // Handle permission request
+                  _hideNotificationBox();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.cyanAccent,
+                  foregroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text('Cho phép'),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -354,6 +339,16 @@ class _HomeScreenState extends State<HomeScreen>
       ),
       _buildCircularButton(
         context,
+        Icons.people_alt_rounded,
+        'Tìm người mất tích',
+        Colors.pinkAccent,
+        () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => MissingPersonsScreen()),
+        ),
+      ),
+      _buildCircularButton(
+        context,
         Icons.check_box,
         'Check tin giả',
         Colors.blueAccent,
@@ -364,18 +359,35 @@ class _HomeScreenState extends State<HomeScreen>
       ),
     ];
 
-    return GridView.builder(
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 20,
-        mainAxisSpacing: 20,
-        childAspectRatio: 1.0,
-      ),
-      itemCount: buttons.length,
-      itemBuilder: (context, index) {
-        return buttons[index];
-      },
-      physics: const NeverScrollableScrollPhysics(),
+    return Column(
+      children: [
+        // Hàng 1: Tin mới, Cảnh báo
+        Row(
+          children: [
+            Expanded(child: buttons[0]),
+            const SizedBox(width: 16),
+            Expanded(child: buttons[1]),
+          ],
+        ),
+        const SizedBox(height: 16),
+        // Hàng 2: Xác thực, Truy nã
+        Row(
+          children: [
+            Expanded(child: buttons[2]),
+            const SizedBox(width: 16),
+            Expanded(child: buttons[3]),
+          ],
+        ),
+        const SizedBox(height: 16),
+        // Hàng 3: Tìm người mất tích, Check tin giả
+        Row(
+          children: [
+            Expanded(child: buttons[4]),
+            const SizedBox(width: 16),
+            Expanded(child: buttons[5]),
+          ],
+        ),
+      ],
     );
   }
 
@@ -388,23 +400,29 @@ class _HomeScreenState extends State<HomeScreen>
   ) {
     return AnimatedButton(
       onTap: onTap,
-      child: _buildGlassmorphicContainer(
-        padding: 0,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 45, color: color),
-            const SizedBox(height: 12),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+      child: Container(
+        height: 120, // Cố định chiều cao
+        child: _buildMobileContainer(
+          padding: 8,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 36, color: color),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: label.length > 10 ? 12 : 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  height: 1.1,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -413,7 +431,7 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildContactInfo(BuildContext context) {
     return GestureDetector(
       onTap: () => _launchFacebook(context),
-      child: _buildGlassmorphicContainer(
+      child: _buildMobileContainer(
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
