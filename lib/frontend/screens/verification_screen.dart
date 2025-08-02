@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../backend/services/verification_service.dart';
+import '../models/verification_result.dart';
 
 class VerificationScreen extends StatefulWidget {
   const VerificationScreen({super.key});
@@ -11,7 +14,8 @@ class _VerificationScreenState extends State<VerificationScreen> {
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _accountController = TextEditingController();
   final TextEditingController _websiteController = TextEditingController();
-  String _verificationResult = '';
+  final VerificationService _verificationService = VerificationService();
+  VerificationResult? _verificationResult;
   bool _isLoading = false;
   bool _hasResult = false;
 
@@ -65,9 +69,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
   Widget _buildInfoCard() {
     return Card(
       elevation: 8,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -101,9 +103,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
                       SizedBox(height: 4),
                       Text(
                         'Giúp bạn kiểm tra tính xác thực của thông tin',
-                        style: TextStyle(
-                          color: Colors.black54,
-                        ),
+                        style: TextStyle(color: Colors.black54),
                       ),
                     ],
                   ),
@@ -125,9 +125,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
   Widget _buildVerificationForm() {
     return Card(
       elevation: 8,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: SingleChildScrollView(
@@ -136,10 +134,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
             children: [
               const Text(
                 'Thông Tin Cần Xác Minh',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 24),
               // Phone number verification
@@ -226,20 +221,14 @@ class _VerificationScreenState extends State<VerificationScreen> {
             const SizedBox(width: 8),
             Text(
               title,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ],
         ),
         const SizedBox(height: 4),
         Text(
           description,
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.grey.shade600,
-          ),
+          style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
         ),
         const SizedBox(height: 8),
         TextField(
@@ -247,9 +236,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
           keyboardType: keyboardType,
           decoration: InputDecoration(
             hintText: hintText,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
             filled: true,
             fillColor: Colors.grey.shade100,
             contentPadding: const EdgeInsets.symmetric(
@@ -263,51 +250,140 @@ class _VerificationScreenState extends State<VerificationScreen> {
   }
 
   Widget _buildResultCard() {
-    final isWarning = _verificationResult.contains('không an toàn') ||
-        _verificationResult.contains('lừa đảo');
-    
+    if (_verificationResult == null) return const SizedBox.shrink();
+
+    final result = _verificationResult!;
+    final isDanger = result.isDanger;
+    final isWarning = result.isWarning;
+    final isSafe = result.isSafe;
+
+    Color backgroundColor;
+    Color borderColor;
+    Color textColor;
+    IconData iconData;
+    String statusText;
+
+    if (isDanger) {
+      backgroundColor = Colors.red.shade50;
+      borderColor = Colors.red.shade300;
+      textColor = Colors.red.shade700;
+      iconData = Icons.dangerous;
+      statusText = 'Nguy hiểm - Lừa đảo';
+    } else if (isWarning) {
+      backgroundColor = Colors.orange.shade50;
+      borderColor = Colors.orange.shade300;
+      textColor = Colors.orange.shade700;
+
+      // Kiểm tra xem có phải lỗi kết nối không
+      if (result.source?.contains('không thể kết nối') == true) {
+        iconData = Icons.wifi_off;
+        statusText = 'Không thể kết nối';
+      } else {
+        iconData = Icons.warning_amber;
+        statusText = 'Cảnh báo';
+      }
+    } else {
+      backgroundColor = Colors.green.shade50;
+      borderColor = Colors.green.shade300;
+      textColor = Colors.green.shade700;
+      iconData = Icons.verified_user;
+      statusText = 'An toàn';
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isWarning ? Colors.red.shade50 : Colors.green.shade50,
+        color: backgroundColor,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: isWarning ? Colors.red.shade300 : Colors.green.shade300,
-        ),
+        border: Border.all(color: borderColor),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(
-                isWarning ? Icons.warning_amber : Icons.verified_user,
-                color: isWarning ? Colors.red : Colors.green,
-              ),
+              Icon(iconData, color: textColor),
               const SizedBox(width: 8),
               Text(
-                isWarning ? 'Cảnh báo' : 'An toàn',
+                statusText,
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
-                  color: isWarning ? Colors.red : Colors.green,
+                  color: textColor,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
-            _verificationResult,
-            style: TextStyle(
-              fontSize: 14,
-              color: isWarning ? Colors.red.shade700 : Colors.green.shade700,
-            ),
+            result.message,
+            style: TextStyle(fontSize: 14, color: textColor),
           ),
+          if (result.fraudPercentage != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Tỷ lệ lừa đảo: ${result.fraudPercentage!.toStringAsFixed(1)}%',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: textColor,
+              ),
+            ),
+          ],
+          if (result.warnings.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Cảnh báo:',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: textColor,
+              ),
+            ),
+            ...result.warnings.map(
+              (warning) => Padding(
+                padding: const EdgeInsets.only(left: 8, top: 2),
+                child: Text(
+                  '• $warning',
+                  style: TextStyle(fontSize: 12, color: textColor),
+                ),
+              ),
+            ),
+          ],
+          if (result.source != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Nguồn: ${result.source}',
+              style: TextStyle(
+                fontSize: 10,
+                fontStyle: FontStyle.italic,
+                color: textColor.withOpacity(0.7),
+              ),
+            ),
+          ],
+          // Hiển thị nút kiểm tra thủ công khi không kết nối được
+          if (result.source?.contains('không thể kết nối') == true) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _openCheckscamManually(),
+                icon: const Icon(Icons.open_in_browser, size: 16),
+                label: const Text('Kiểm tra thủ công trên CheckScam.vn'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 
-  void _verifyInformation() {
+  void _verifyInformation() async {
     // Validate that at least one field is filled
     if (_phoneController.text.isEmpty &&
         _accountController.text.isEmpty &&
@@ -324,43 +400,98 @@ class _VerificationScreenState extends State<VerificationScreen> {
     setState(() {
       _isLoading = true;
       _hasResult = false;
+      _verificationResult = null;
     });
 
-    // Simulate verification process
-    Future.delayed(const Duration(seconds: 2), () {
-      // This is just sample logic. In a real app, you would check against a database
+    try {
+      VerificationResult result;
+
+      if (_phoneController.text.isNotEmpty) {
+        result = await _verificationService.verifyPhoneNumber(
+          _phoneController.text,
+        );
+      } else if (_accountController.text.isNotEmpty) {
+        result = await _verificationService.verifyBankAccount(
+          _accountController.text,
+        );
+      } else if (_websiteController.text.isNotEmpty) {
+        result = await _verificationService.verifyWebsite(
+          _websiteController.text,
+        );
+      } else {
+        // This shouldn't happen due to validation above, but just in case
+        throw Exception('Không có thông tin để xác thực');
+      }
+
       setState(() {
         _isLoading = false;
         _hasResult = true;
+        _verificationResult = result;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _hasResult = true;
+        _verificationResult = VerificationResult(
+          status: 'warning',
+          message:
+              'Có lỗi xảy ra khi xác thực thông tin: ${e.toString()}. Vui lòng thử lại sau.',
+          source: 'Hệ thống',
+        );
+      });
 
-        if (_phoneController.text.isNotEmpty) {
-          if (_phoneController.text.startsWith('0900') ||
-              _phoneController.text.startsWith('0904')) {
-            _verificationResult =
-                'Số điện thoại ${_phoneController.text} đã bị báo cáo là số lừa đảo. Vui lòng cảnh giác và không thực hiện giao dịch.';
-          } else {
-            _verificationResult =
-                'Số điện thoại ${_phoneController.text} chưa có báo cáo là lừa đảo trong cơ sở dữ liệu của chúng tôi.';
-          }
-        } else if (_accountController.text.isNotEmpty) {
-          if (_accountController.text.contains('1234')) {
-            _verificationResult =
-                'Tài khoản ${_accountController.text} đã bị báo cáo là không an toàn. Không nên chuyển tiền cho tài khoản này.';
-          } else {
-            _verificationResult =
-                'Tài khoản ${_accountController.text} hiện chưa có báo cáo tiêu cực trong hệ thống.';
-          }
-        } else if (_websiteController.text.isNotEmpty) {
-          if (_websiteController.text.contains('fake') ||
-              _websiteController.text.contains('scam')) {
-            _verificationResult =
-                'Website ${_websiteController.text} là website lừa đảo đã được xác nhận. Không nhập thông tin cá nhân vào website này.';
-          } else {
-            _verificationResult =
-                'Website ${_websiteController.text} chưa có báo cáo là trang lừa đảo trong cơ sở dữ liệu.';
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi xác thực: ${e.toString()}'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    }
+  }
+
+  void _openCheckscamManually() async {
+    String searchTerm = '';
+
+    // Lấy thông tin đã nhập
+    if (_phoneController.text.isNotEmpty) {
+      searchTerm = _phoneController.text;
+    } else if (_accountController.text.isNotEmpty) {
+      searchTerm = _accountController.text;
+    } else if (_websiteController.text.isNotEmpty) {
+      searchTerm = _websiteController.text;
+    }
+
+    if (searchTerm.isNotEmpty) {
+      final url =
+          'https://checkscam.vn/?qh_ss=${Uri.encodeComponent(searchTerm)}';
+
+      try {
+        if (await canLaunchUrl(Uri.parse(url))) {
+          await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Không thể mở trình duyệt. Vui lòng truy cập checkscam.vn thủ công.',
+                ),
+                backgroundColor: Colors.orange,
+              ),
+            );
           }
         }
-      });
-    });
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Lỗi mở trình duyệt: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
   }
-} 
+}
